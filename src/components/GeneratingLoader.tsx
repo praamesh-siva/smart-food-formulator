@@ -22,16 +22,16 @@ export function GeneratingLoader() {
 
   return (
     <div
-      className="overflow-hidden rounded-2xl border border-sage-200/80 bg-white shadow-lg shadow-sage-900/5"
+      className="card-panel overflow-hidden shadow-card"
       role="status"
       aria-live="polite"
       aria-label="Generating formulation"
     >
-      <div className="border-b border-sage-100 bg-gradient-to-r from-sage-50 to-white px-6 py-5 sm:px-8">
+      <div className="border-b border-sage-100 bg-gradient-to-r from-sage-50 via-white to-sage-50/80 px-4 py-5 sm:px-6">
         <div className="flex items-center gap-4">
-          <div className="relative flex h-12 w-12 items-center justify-center">
+          <div className="relative flex h-14 w-14 items-center justify-center">
             <span
-              className="absolute inset-0 rounded-full border-2 border-sage-200"
+              className="absolute inset-0 rounded-full border-2 border-sage-200/80"
               aria-hidden
             />
             <span
@@ -39,9 +39,9 @@ export function GeneratingLoader() {
               aria-hidden
             />
             <svg
-              className="h-5 w-5 text-sage-600"
-              width="20"
-              height="20"
+              className="h-6 w-6 text-sage-600"
+              width="24"
+              height="24"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -56,17 +56,17 @@ export function GeneratingLoader() {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-semibold text-sage-900">
+            <p className="text-base font-bold text-sage-900">
               Generating formulation
             </p>
-            <p className="text-sm text-sage-500">
-              Applying food science constraints to your recipe…
+            <p className="mt-0.5 text-sm text-sage-500">
+              OpenAI is applying food science constraints to your recipe…
             </p>
           </div>
         </div>
       </div>
 
-      <div className="px-6 py-6 sm:px-8 sm:py-7">
+      <div className="px-4 py-5 sm:px-6 sm:py-6">
         <ul className="space-y-3">
           {STEPS.map((step, i) => {
             const isActive = i === activeStep;
@@ -74,18 +74,18 @@ export function GeneratingLoader() {
             return (
               <li
                 key={step}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300 ${
+                className={`flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all duration-300 ${
                   isActive
-                    ? "bg-sage-50 border border-sage-200"
+                    ? "border border-sage-200 bg-sage-50/80 shadow-sm"
                     : "border border-transparent"
                 }`}
               >
                 <span
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
                     isDone
-                      ? "bg-sage-600 text-white"
+                      ? "bg-gradient-to-b from-sage-600 to-sage-700 text-white shadow-sm"
                       : isActive
-                        ? "bg-sage-600 text-white animate-pulse"
+                        ? "bg-gradient-to-b from-sage-600 to-sage-700 text-white animate-pulse-soft shadow-sm"
                         : "bg-sage-100 text-sage-400"
                   }`}
                   aria-hidden
@@ -113,7 +113,7 @@ export function GeneratingLoader() {
                 <span
                   className={`text-sm ${
                     isActive || isDone
-                      ? "font-medium text-sage-800"
+                      ? "font-semibold text-sage-800"
                       : "text-sage-400"
                   }`}
                 >
@@ -124,9 +124,9 @@ export function GeneratingLoader() {
           })}
         </ul>
 
-        <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-sage-100">
+        <div className="mt-7 h-2 overflow-hidden rounded-full bg-sage-100 shadow-inset">
           <div
-            className="h-full rounded-full bg-sage-600 transition-all duration-500 ease-out"
+            className="h-full rounded-full bg-gradient-to-r from-sage-500 via-sage-600 to-emerald-600 transition-all duration-500 ease-out"
             style={{
               width: `${((activeStep + 1) / STEPS.length) * 100}%`,
             }}

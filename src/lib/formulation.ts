@@ -11,7 +11,7 @@ import {
   parseRecipe,
 } from "./recipe-parser";
 import type { FormulationResult, OptimizationGoal } from "./formulation-types";
-import { OPTIMIZATION_GOALS } from "./formulation-types";
+import { ALLERGEN_FREE_DISCLAIMER, HIGH_PROTEIN_RATIONALE_NOTE, OPTIMIZATION_GOALS } from "./formulation-types";
 
 export type {
   ConstraintInfo,
@@ -19,7 +19,7 @@ export type {
   OptimizationGoal,
   Substitution,
 } from "./formulation-types";
-export { CONSTRAINT_INFO, OPTIMIZATION_GOALS } from "./formulation-types";
+export { CONSTRAINT_INFO, OPTIMIZATION_GOALS, ALLERGEN_FREE_DISCLAIMER } from "./formulation-types";
 
 export function generatePlaceholderFormulation(
   originalRecipe: string,
@@ -46,10 +46,12 @@ export function generatePlaceholderFormulation(
 
   const { ingredients, substitutions } = transformIngredients(parsed, goal);
   const updatedMethod = generateMethod(parsed, goal);
-  const foodScienceNotes = generateFoodScienceNotes(
-    parsed,
-    goal,
-    substitutions
+  const foodScienceNotes = withHighProteinRationale(
+    withAllergenFreeDisclaimer(
+      generateFoodScienceNotes(parsed, goal, substitutions),
+      goal
+    ),
+    goal
   );
   const expectedResult = generateExpectedResult(parsed, goal);
 
@@ -63,4 +65,26 @@ export function generatePlaceholderFormulation(
     expectedResult,
     originalRecipeReference,
   };
+}
+
+function withAllergenFreeDisclaimer(
+  notes: string[],
+  goal: OptimizationGoal
+): string[] {
+  if (goal !== "allergen-free") return notes;
+  if (notes.some((note) => note.includes(ALLERGEN_FREE_DISCLAIMER.slice(0, 40)))) {
+    return notes;
+  }
+  return [ALLERGEN_FREE_DISCLAIMER, ...notes];
+}
+
+function withHighProteinRationale(
+  notes: string[],
+  goal: OptimizationGoal
+): string[] {
+  if (goal !== "high-protein") return notes;
+  if (notes.some((note) => note.toLowerCase().includes("protein rationale"))) {
+    return notes;
+  }
+  return [HIGH_PROTEIN_RATIONALE_NOTE, ...notes];
 }

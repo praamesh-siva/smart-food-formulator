@@ -8,11 +8,11 @@ interface FormulationOutputProps {
 }
 
 const SECTION_HEADINGS = [
-  { title: "Ingredients", icon: "list" },
-  { title: "Method", icon: "steps" },
-  { title: "Substitutions", icon: "swap" },
-  { title: "Food Science Notes", icon: "science" },
-  { title: "Expected Result", icon: "result" },
+  { number: "01", title: "Reformulated Ingredients", icon: "list" },
+  { number: "02", title: "Updated Method", icon: "steps" },
+  { number: "03", title: "Key Substitutions", icon: "swap" },
+  { number: "04", title: "Food Science Analysis", icon: "science" },
+  { number: "05", title: "Sensory & Quality Outlook", icon: "result" },
 ] as const;
 
 function SectionIcon({ type }: { type: string }) {
@@ -53,18 +53,27 @@ function SectionIcon({ type }: { type: string }) {
 }
 
 function SectionHeading({
+  number,
   title,
   icon,
 }: {
+  number: string;
   title: string;
   icon: string;
 }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sage-100 text-sage-600">
-        <SectionIcon type={icon} />
+    <div className="flex items-start gap-3 border-b border-sage-100 pb-3">
+      <span className="mt-0.5 font-mono text-[11px] font-bold tracking-wider text-sage-400">
+        {number}
       </span>
-      <h3 className="text-base font-semibold text-sage-900">{title}</h3>
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sage-100 text-sage-700 ring-1 ring-sage-200/70">
+          <SectionIcon type={icon} />
+        </span>
+        <h3 className="text-sm font-bold leading-snug tracking-tight text-sage-900 sm:text-[15px]">
+          {title}
+        </h3>
+      </div>
     </div>
   );
 }
@@ -124,28 +133,31 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
   };
 
   return (
-    <div className="animate-fade-in overflow-hidden rounded-2xl border border-sage-200/80 bg-white shadow-lg shadow-sage-900/5">
-      <div className="border-b border-sage-100 bg-gradient-to-br from-sage-600 to-sage-700 px-6 py-6 sm:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-sage-200">
-              Reformulated output
-            </p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {result.recipeName}
-            </h2>
-            {result.source && (
-              <p className="mt-1 text-xs font-medium text-sage-200/80">
-                {result.source === "openai" ? "AI generated" : "Fallback mode"}
+    <div className="animate-fade-in overflow-hidden rounded-2xl border border-sage-200/80 bg-white shadow-card">
+      <div className="relative overflow-hidden border-b border-sage-700/20 bg-gradient-to-br from-sage-800 via-sage-700 to-emerald-800 px-4 py-5 sm:px-6 sm:py-6">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-25"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 15% 15%, rgb(255 255 255 / 0.2) 0, transparent 42%), radial-gradient(circle at 85% 0%, rgb(255 255 255 / 0.1) 0, transparent 38%)",
+          }}
+          aria-hidden
+        />
+        <div className="relative">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-100/90">
+                Formulation Report
               </p>
-            )}
-          </div>
-          <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display mt-1.5 text-2xl font-normal leading-tight tracking-tight text-white sm:text-3xl">
+                {result.recipeName}
+              </h2>
+            </div>
+            <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
               <button
                 type="button"
                 onClick={handleCopyOutput}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors hover:bg-white/25"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3.5 py-2 text-sm font-semibold text-white ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/25 active:scale-[0.98]"
               >
                 <svg
                   className="h-4 w-4"
@@ -163,36 +175,70 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
                     d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
                   />
                 </svg>
-                Copy output
+                Copy report
               </button>
-              <span className="inline-flex shrink-0 items-center rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/25 backdrop-blur-sm">
-                {result.goalLabel}
-              </span>
+              {copied && (
+                <span className="text-xs font-semibold text-emerald-100" role="status">
+                  Copied!
+                </span>
+              )}
             </div>
-            {copied && (
-              <span className="text-xs font-medium text-sage-100" role="status">
-                Copied!
-              </span>
-            )}
           </div>
+
+          <dl className="mt-4 grid grid-cols-1 gap-2 rounded-xl bg-black/15 p-3 ring-1 ring-white/10 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-white/10">
+            <div className="sm:px-3">
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
+                Optimization goal
+              </dt>
+              <dd className="mt-0.5 text-sm font-semibold text-white">
+                {result.goalLabel}
+              </dd>
+            </div>
+            <div className="sm:px-3">
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
+                Report status
+              </dt>
+              <dd className="mt-0.5 text-sm font-semibold text-white">
+                {result.source === "openai"
+                  ? "OpenAI generated"
+                  : result.source === "fallback"
+                    ? "Backup formulation"
+                    : "Complete"}
+              </dd>
+            </div>
+            <div className="sm:px-3">
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
+                Sections
+              </dt>
+              <dd className="mt-0.5 text-sm font-semibold text-white">
+                5 analysis blocks
+              </dd>
+            </div>
+          </dl>
         </div>
       </div>
 
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+      <div className="bg-gradient-to-b from-sage-50/40 to-white p-4 sm:p-5 lg:p-6">
+        <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
           {/* Ingredients */}
-          <section className="rounded-xl border border-sage-100 bg-sage-50/40 p-5 sm:p-6">
-            <SectionHeading title={SECTION_HEADINGS[0].title} icon={SECTION_HEADINGS[0].icon} />
-            <ul className="mt-5 space-y-2.5">
+          <section className="report-section">
+            <SectionHeading
+              number={SECTION_HEADINGS[0].number}
+              title={SECTION_HEADINGS[0].title}
+              icon={SECTION_HEADINGS[0].icon}
+            />
+            <ul className="mt-4 divide-y divide-sage-100 rounded-xl border border-sage-100/80 bg-sage-50/30">
               {result.reformulatedIngredients.map((item, i) => (
                 <li
                   key={i}
-                  className="flex gap-3 rounded-lg bg-white px-4 py-3 text-sm leading-relaxed text-sage-800 shadow-sm ring-1 ring-sage-100"
+                  className="flex gap-3 px-3.5 py-2.5 text-sm leading-relaxed text-sage-800 sm:px-4 sm:py-3"
                 >
                   <span
-                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sage-500"
+                    className="mt-0.5 w-5 shrink-0 font-mono text-[11px] font-bold text-sage-400"
                     aria-hidden
-                  />
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -200,16 +246,20 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
           </section>
 
           {/* Method */}
-          <section className="rounded-xl border border-sage-100 bg-sage-50/40 p-5 sm:p-6">
-            <SectionHeading title={SECTION_HEADINGS[1].title} icon={SECTION_HEADINGS[1].icon} />
-            <ol className="mt-5 space-y-3">
+          <section className="report-section">
+            <SectionHeading
+              number={SECTION_HEADINGS[1].number}
+              title={SECTION_HEADINGS[1].title}
+              icon={SECTION_HEADINGS[1].icon}
+            />
+            <ol className="mt-4 space-y-2">
               {result.updatedMethod.map((step, i) => (
                 <li
                   key={i}
-                  className="flex gap-3 rounded-lg bg-white px-4 py-3 shadow-sm ring-1 ring-sage-100"
+                  className="flex gap-3 rounded-lg border border-sage-100/90 bg-sage-50/30 px-3.5 py-2.5 sm:px-4 sm:py-3"
                 >
                   <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sage-600 text-xs font-bold text-white"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sage-700 text-[11px] font-bold text-white"
                     aria-hidden
                   >
                     {i + 1}
@@ -224,29 +274,46 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
         </div>
 
         {/* Substitutions */}
-        <section className="mt-6 rounded-xl border border-sage-100 bg-sage-50/40 p-5 sm:mt-8 sm:p-6">
-          <SectionHeading title={SECTION_HEADINGS[2].title} icon={SECTION_HEADINGS[2].icon} />
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="report-section mt-4 sm:mt-5">
+          <SectionHeading
+            number={SECTION_HEADINGS[2].number}
+            title={SECTION_HEADINGS[2].title}
+            icon={SECTION_HEADINGS[2].icon}
+          />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {result.keySubstitutions.map((sub, i) => (
               <div
                 key={i}
-                className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-sage-100"
+                className="rounded-xl border border-sage-100 bg-white p-3.5 sm:p-4"
               >
-                <div className="space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-sage-400">
-                    Original
-                  </p>
-                  <p className="text-sm text-sage-500 line-through decoration-sage-300">
-                    {sub.original}
-                  </p>
-                  <p className="text-xs font-medium uppercase tracking-wide text-sage-400">
-                    Replacement
-                  </p>
-                  <p className="text-sm font-semibold text-sage-900">
-                    {sub.replacement}
-                  </p>
+                <p className="report-section-label">Substitution {i + 1}</p>
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-sage-400">
+                      Original
+                    </p>
+                    <p className="mt-0.5 text-sm text-sage-500 line-through decoration-sage-300">
+                      {sub.original}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-sage-400" aria-hidden>
+                    <span className="h-px flex-1 bg-sage-200" />
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span className="h-px flex-1 bg-sage-200" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-sage-400">
+                      Replacement
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-sage-900">
+                      {sub.replacement}
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-3 border-t border-sage-100 pt-3 text-sm leading-relaxed text-sage-600">
+                <p className="report-divider mt-3 pt-3 text-sm leading-relaxed text-sage-600">
+                  <span className="font-semibold text-sage-700">Rationale: </span>
                   {sub.rationale}
                 </p>
               </div>
@@ -254,39 +321,51 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
           </div>
         </section>
 
-        <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-2 lg:gap-8">
+        <div className="mt-4 grid gap-4 sm:mt-5 lg:grid-cols-2 lg:gap-5">
           {/* Food Science Notes */}
-          <section className="rounded-xl border border-amber-100 bg-amber-50/50 p-5 sm:p-6">
-            <SectionHeading title={SECTION_HEADINGS[3].title} icon={SECTION_HEADINGS[3].icon} />
-            <ul className="mt-5 space-y-3">
+          <section className="report-section border-amber-200/60 bg-gradient-to-br from-amber-50/50 to-white">
+            <SectionHeading
+              number={SECTION_HEADINGS[3].number}
+              title={SECTION_HEADINGS[3].title}
+              icon={SECTION_HEADINGS[3].icon}
+            />
+            <ul className="mt-4 space-y-2">
               {result.foodScienceNotes.map((note, i) => (
                 <li
                   key={i}
-                  className="flex gap-3 rounded-lg bg-white/80 px-4 py-3 text-sm leading-relaxed text-sage-700 ring-1 ring-amber-100"
+                  className="rounded-lg border border-amber-100/80 bg-white/90 px-3.5 py-2.5 sm:px-4 sm:py-3"
                 >
-                  <span className="shrink-0 font-bold text-amber-600" aria-hidden>
-                    {i + 1}.
-                  </span>
-                  <span>{note}</span>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700/80">
+                    Finding {i + 1}
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-sage-700">
+                    {note}
+                  </p>
                 </li>
               ))}
             </ul>
           </section>
 
           {/* Expected Result */}
-          <section className="rounded-xl border border-sage-200 bg-gradient-to-br from-white to-sage-50 p-5 sm:p-6">
-            <SectionHeading title={SECTION_HEADINGS[4].title} icon={SECTION_HEADINGS[4].icon} />
-            <p className="mt-5 text-sm leading-relaxed text-sage-700 sm:text-base">
-              {result.expectedResult}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-md bg-sage-100 px-2.5 py-1 text-xs font-medium text-sage-600">
+          <section className="report-section border-sage-200/80 bg-gradient-to-br from-white to-sage-50/50">
+            <SectionHeading
+              number={SECTION_HEADINGS[4].number}
+              title={SECTION_HEADINGS[4].title}
+              icon={SECTION_HEADINGS[4].icon}
+            />
+            <div className="mt-4 rounded-xl border border-sage-200/70 bg-white p-3.5 sm:p-4">
+              <p className="text-sm leading-relaxed text-sage-700 sm:text-[15px]">
+                {result.expectedResult}
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <span className="rounded-md bg-sage-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sage-700">
                 Texture
               </span>
-              <span className="rounded-md bg-sage-100 px-2.5 py-1 text-xs font-medium text-sage-600">
+              <span className="rounded-md bg-sage-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sage-700">
                 Flavor
               </span>
-              <span className="rounded-md bg-sage-100 px-2.5 py-1 text-xs font-medium text-sage-600">
+              <span className="rounded-md bg-sage-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sage-700">
                 Structure
               </span>
             </div>
@@ -294,11 +373,12 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
         </div>
 
         {result.originalRecipeReference && (
-          <section className="mt-6 border-t border-sage-100 pt-6 sm:mt-8">
+          <section className="report-divider mt-4 pt-4 sm:mt-5 sm:pt-5">
+            <p className="report-section-label mb-2">Appendix</p>
             <button
               type="button"
               onClick={() => setShowOriginal((v) => !v)}
-              className="flex w-full items-center justify-between gap-4 rounded-xl border border-sage-200 bg-white px-4 py-3.5 text-left shadow-sm transition-colors hover:bg-sage-50"
+              className="flex w-full items-center justify-between gap-4 rounded-xl border border-sage-200/90 bg-white px-3.5 py-3 text-left shadow-sm transition-all hover:border-sage-300 hover:bg-sage-50/50 active:scale-[0.995] sm:px-4 sm:py-3.5"
               aria-expanded={showOriginal}
             >
               <span className="text-sm font-semibold text-sage-800">
@@ -320,7 +400,7 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
               </svg>
             </button>
             {showOriginal && (
-              <div className="mt-3 rounded-xl border border-sage-200 bg-sage-50/50 p-4 sm:p-5">
+              <div className="mt-2.5 rounded-xl border border-sage-200/90 bg-sage-50/60 p-3.5 sm:p-4">
                 <p className="text-sm leading-relaxed text-sage-600 whitespace-pre-wrap">
                   {result.originalRecipeReference}
                 </p>

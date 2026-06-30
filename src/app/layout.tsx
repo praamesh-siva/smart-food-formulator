@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { DM_Serif_Display, Geist } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -8,10 +8,17 @@ const geistSans = Geist({
   display: "swap",
 });
 
+const displaySerif = DM_Serif_Display({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Smart Food Formulator",
   description:
-    "Paste a recipe and reformulate it with AI based on allergen-free, vegan, sugar reduction, cost, protein, or calorie goals.",
+    "OpenAI-powered recipe reformulation for dietary, nutrition, allergen, cost, protein, and calorie goals.",
 };
 
 export default function RootLayout({
@@ -20,10 +27,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full`}>
-      <body
-        className={`${geistSans.className} min-h-screen bg-slate-50 font-sans text-sage-900 antialiased`}
-      >
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${displaySerif.variable} h-full`}
+    >
+      <body className="min-h-screen bg-slate-50 font-sans text-sage-900 antialiased">
         {children}
       </body>
     </html>

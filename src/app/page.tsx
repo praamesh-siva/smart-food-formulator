@@ -197,25 +197,33 @@ export default function Home() {
   const hasInput = recipe.trim().length > 0 || output !== null;
 
   return (
-    <div className="relative min-h-screen">
+    <div className="app-shell">
       <div
-        className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sage-100/60 via-slate-50 to-slate-50"
+        className="pointer-events-none fixed inset-0 -z-10 bg-hero-mesh"
         aria-hidden
       />
       <div
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-40"
         style={{
           backgroundImage:
-            "linear-gradient(to right, rgb(148 163 184 / 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgb(148 163 184 / 0.08) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
+            "linear-gradient(to right, rgb(148 163 184 / 0.07) 1px, transparent 1px), linear-gradient(to bottom, rgb(148 163 184 / 0.07) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
         }}
         aria-hidden
       />
+      <div
+        className="pointer-events-none fixed -left-24 top-32 -z-10 h-72 w-72 rounded-full bg-sage-300/20 blur-3xl"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none fixed -right-16 top-64 -z-10 h-80 w-80 rounded-full bg-emerald-200/25 blur-3xl"
+        aria-hidden
+      />
 
-      <header className="sticky top-0 z-20 border-b border-sage-200/60 bg-white/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sage-600 text-white shadow-md shadow-sage-600/25">
+      <header className="glass-header">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sage-600 to-sage-700 text-white shadow-glow">
               <svg
                 className="h-5 w-5"
                 width="20"
@@ -234,46 +242,53 @@ export default function Home() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-sage-900">
+              <p className="text-[15px] font-bold tracking-tight text-sage-900">
                 Smart Food Formulator
               </p>
-              <p className="text-xs text-sage-500 hidden sm:block">
+              <p className="text-xs font-medium text-sage-500 hidden sm:block">
                 Constraint-driven recipe reformulation
               </p>
             </div>
           </div>
-          <span className="rounded-full border border-sage-200 bg-sage-50 px-3 py-1 text-xs font-medium text-sage-600">
-            MVP · Demo mode
-          </span>
+          <span className="badge-accent">Powered by OpenAI</span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:py-14">
-        <section className="mb-10 text-center sm:mb-12">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-sage-200 bg-white px-4 py-1.5 text-xs font-medium text-sage-600 shadow-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-            Food science powered formulation
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-9 lg:py-11">
+        <section className="mb-6 animate-fade-up text-center sm:mb-8">
+          <div className="badge-pill mb-3 sm:mb-4">
+            <span className="relative flex h-2 w-2" aria-hidden>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            OpenAI-powered formulation
           </div>
-          <h1 className="text-balance text-3xl font-bold tracking-tight text-sage-900 sm:text-4xl lg:text-5xl">
+          <h1 className="hero-title">
             Reformulate recipes with{" "}
-            <span className="text-sage-600">smart constraints</span>
+            <span className="hero-gradient-text">smart constraints</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-balance text-base text-sage-600 sm:text-lg">
-            Paste a recipe, choose an optimization goal, and generate a
-            professionally structured formulation—tailored for allergen-free,
-            vegan, sugar reduction, cost, protein, or calorie targets.
+          <p className="mx-auto mt-3 max-w-2xl text-balance text-sm leading-relaxed text-sage-600 sm:mt-4 sm:text-base lg:text-lg">
+            Paste a recipe, choose an optimization goal, and generate an
+            OpenAI-powered reformulation—tailored for allergen-free, vegan,
+            sugar reduction, cost, protein, or calorie targets.
           </p>
+          <div className="mx-auto mt-4 flex max-w-3xl flex-wrap items-center justify-center gap-1.5 sm:mt-5 sm:gap-2">
+            {OPTIMIZATION_GOALS.map((g) => (
+              <span key={g.value} className="goal-chip">
+                {g.label}
+              </span>
+            ))}
+          </div>
         </section>
 
-        <div className="grid gap-8 lg:grid-cols-5 lg:gap-10">
-          <div className="lg:col-span-3 space-y-8">
-            <section className="rounded-2xl border border-sage-200/80 bg-white p-5 shadow-sm sm:p-6 lg:p-8">
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid gap-5 sm:gap-6 lg:grid-cols-5 lg:gap-8">
+          <div className="space-y-5 sm:space-y-6 lg:col-span-3">
+            <section className="card-panel-interactive p-4 sm:p-6 lg:p-7">
+              <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-sage-900">
-                    Recipe input
-                  </h2>
-                  <p className="mt-1 text-sm text-sage-500">
+                  <p className="section-eyebrow">Step 1</p>
+                  <h2 className="section-title mt-1">Recipe input</h2>
+                  <p className="section-subtitle">
                     Ingredients, quantities, and method
                   </p>
                 </div>
@@ -282,7 +297,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => setShowSampleMenu((v) => !v)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-sage-200 bg-white px-3 py-2 text-sm font-medium text-sage-700 shadow-sm transition-colors hover:bg-sage-50"
+                      className="btn-secondary"
                       aria-expanded={showSampleMenu}
                       aria-haspopup="listbox"
                     >
@@ -305,10 +320,7 @@ export default function Home() {
                       Sample recipe
                     </button>
                     {showSampleMenu && (
-                      <div
-                        className="absolute right-0 z-10 mt-2 w-72 rounded-xl border border-sage-200 bg-white p-2 shadow-xl ring-1 ring-sage-900/5"
-                        role="listbox"
-                      >
+                      <div className="dropdown-panel" role="listbox">
                         {SAMPLE_RECIPES.map((sample) => (
                           <button
                             key={sample.id}
@@ -316,12 +328,12 @@ export default function Home() {
                             role="option"
                             aria-selected={false}
                             onClick={() => loadSample(sample.content)}
-                            className="w-full rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-sage-50"
+                            className="w-full rounded-xl px-3.5 py-3 text-left transition-all hover:bg-sage-50"
                           >
-                            <p className="text-sm font-semibold text-sage-900">
+                            <p className="text-sm font-bold text-sage-900">
                               {sample.label}
                             </p>
-                            <p className="text-xs text-sage-500">
+                            <p className="mt-0.5 text-xs leading-relaxed text-sage-500">
                               {sample.description}
                             </p>
                           </button>
@@ -333,7 +345,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={handleClear}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-sage-200 bg-white px-3 py-2 text-sm font-medium text-sage-600 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                      className="btn-danger-ghost"
                     >
                       <svg
                         className="h-4 w-4"
@@ -382,15 +394,13 @@ Blueberry Muffins
 ½ cup sugar
 2 eggs
 ½ cup butter…"
-                className="w-full resize-y rounded-xl border border-sage-200 bg-slate-50/80 px-4 py-3.5 text-sm leading-relaxed text-sage-800 placeholder:text-sage-400 focus:border-sage-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sage-400/25 transition-all"
+                className="input-textarea"
               />
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-5 space-y-4 border-t border-sage-100 pt-5 sm:mt-6 sm:space-y-5 sm:pt-6">
                 <div>
-                  <label
-                    htmlFor="goal"
-                    className="mb-2 block text-sm font-semibold text-sage-800"
-                  >
+                  <p className="section-eyebrow mb-3">Step 2</p>
+                  <label htmlFor="goal" className="field-label">
                     Optimization goal
                   </label>
                   <div className="relative">
@@ -400,7 +410,7 @@ Blueberry Muffins
                       onChange={(e) =>
                         setGoal(e.target.value as OptimizationGoal)
                       }
-                      className="w-full appearance-none rounded-xl border border-sage-200 bg-white px-4 py-3 pr-10 text-sm font-medium text-sage-800 shadow-sm focus:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-400/25 cursor-pointer"
+                      className="input-select"
                     >
                       {OPTIMIZATION_GOALS.map((g) => (
                         <option key={g.value} value={g.value}>
@@ -430,11 +440,12 @@ Blueberry Muffins
                 </div>
 
                 <div>
+                  <p className="section-eyebrow mb-3">Step 3</p>
                   <button
                     type="button"
                     onClick={handleGenerate}
                     disabled={isGenerating}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sage-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sage-600/25 transition-all hover:bg-sage-700 hover:shadow-sage-600/30 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+                    className="btn-primary"
                   >
                   {isGenerating ? (
                     <>
@@ -485,7 +496,7 @@ Blueberry Muffins
                   )}
                   </button>
                   {inputError && (
-                    <p className="mt-2 text-sm text-amber-700" role="alert">
+                    <p className="alert-notice mt-3" role="alert">
                       {inputError}
                     </p>
                   )}
@@ -495,15 +506,15 @@ Blueberry Muffins
 
             <section ref={outputRef} className="scroll-mt-24">
               {apiNotice && !isGenerating && (
-                <p className="mb-4 text-sm text-amber-700" role="alert">
+                <p className="alert-notice mb-3 sm:mb-4" role="alert">
                   {apiNotice}
                 </p>
               )}
               {isGenerating && <GeneratingLoader />}
               {!isGenerating && output && <FormulationOutput result={output} />}
               {!isGenerating && !output && (
-                <div className="rounded-2xl border border-dashed border-sage-200 bg-white/50 px-6 py-12 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-sage-100 text-sage-500">
+                <div className="empty-state">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sage-100 to-sage-200/80 text-sage-600 shadow-sm">
                     <svg
                       className="h-6 w-6"
                       width="24"
@@ -521,11 +532,12 @@ Blueberry Muffins
                       />
                     </svg>
                   </div>
-                  <p className="mt-4 text-sm font-medium text-sage-700">
+                  <p className="mt-4 text-base font-semibold text-sage-800 sm:mt-5">
                     Your formulation will appear here
                   </p>
-                  <p className="mt-1 text-sm text-sage-500">
-                    Add a recipe or load a sample, then generate
+                  <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-sage-500">
+                    Add a recipe or load a sample, then generate your
+                    OpenAI-powered reformulation.
                   </p>
                 </div>
               )}
@@ -533,17 +545,22 @@ Blueberry Muffins
           </div>
 
           <div className="lg:col-span-2">
-            <div className="lg:sticky lg:top-24">
+            <div className="lg:sticky lg:top-[4.75rem]">
               <ConstraintsPanel goal={goal} onGoalChange={setGoal} />
             </div>
           </div>
         </div>
       </main>
 
-      <footer className="mt-8 border-t border-sage-200/80 bg-white/60 py-8">
-        <div className="mx-auto max-w-6xl px-4 text-center text-sm text-sage-500 sm:px-6">
-          Smart Food Formulator — demonstration MVP with placeholder logic.
-          AI API integration coming soon.
+      <footer className="mt-6 border-t border-sage-200/80 bg-white/70 py-6 backdrop-blur-sm sm:mt-8 sm:py-8">
+        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
+          <p className="text-sm font-medium leading-relaxed text-sage-600">
+            OpenAI-powered recipe reformulation for dietary, nutrition, allergen,
+            cost, protein, and calorie goals.
+          </p>
+          <p className="mt-2 text-xs text-sage-400">
+            Smart Food Formulator · AI Formulation Tool
+          </p>
         </div>
       </footer>
     </div>

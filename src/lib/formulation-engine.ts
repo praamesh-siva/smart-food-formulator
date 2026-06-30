@@ -1,5 +1,9 @@
 import type { OptimizationGoal, Substitution } from "./formulation-types";
 import {
+  HIGH_PROTEIN_RATIONALE_NOTE,
+  LOW_CALORIE_RATIONALE_NOTE,
+} from "./formulation-types";
+import {
   countEggs,
   findOriginalLine,
   formatIngredient,
@@ -56,9 +60,9 @@ function creamFatLabel(recipe: ParsedRecipe, goal: OptimizationGoal): string {
     return "neutral oil (sunflower or avocado)";
   }
   if (goal === "cost-optimization") {
-    if (softened) return "vegetable shortening, softened";
+    if (softened) return "vegetable oil or neutral oil";
     if (melted) return "vegetable oil, melted";
-    return "vegetable oil";
+    return "vegetable oil or neutral oil";
   }
   if (softened) return "butter, softened";
   if (melted) return "melted butter";
@@ -107,6 +111,71 @@ function halveQuantityText(qty: string): string {
   return `half of the original (${qty.trim()})`;
 }
 
+function moderateReduceSugarQuantityText(qty: string): string {
+  const n = parseQuantityNumber(qty);
+  if (qty.includes("cup")) {
+    if (n >= 2) return "1½ cups";
+    if (n >= 1.5) return "1 cup";
+    if (n >= 1) return "¾ cup";
+    if (n >= 0.75) return "½ cup";
+    if (n >= 0.5) return "⅓ cup";
+  }
+  if (qty.includes("tbsp")) {
+    if (n >= 3) return "2 tbsp";
+    if (n >= 2) return "1½ tbsp";
+  }
+  return `about 25–35% less (${qty.trim()})`;
+}
+
+function lowCalorieButterLine(qty: string, desc: string, recipeKind: RecipeKind): string {
+  const n = parseQuantityNumber(qty);
+  const softened = /\bsoftened\b/i.test(desc) ? ", at room temperature" : "";
+
+  if (recipeKind === "muffin" || recipeKind === "cookie" || recipeKind === "pancake") {
+    if (n >= 0.5) {
+      return `2 tbsp neutral oil + ¼ cup unsweetened applesauce + 2 tbsp plain nonfat Greek yogurt${softened}`;
+    }
+    if (n >= 0.25) {
+      return `1 tbsp neutral oil + 2 tbsp unsweetened applesauce + 1 tbsp plain nonfat Greek yogurt${softened}`;
+    }
+    return `${qty} neutral oil or unsweetened applesauce blend${softened}`;
+  }
+
+  if (n >= 0.25) {
+    return "1 tbsp olive oil + 2 tbsp unsweetened applesauce";
+  }
+  return `${qty} olive oil`;
+}
+
+function lowCalorieButterRationale(recipeKind: RecipeKind): string {
+  if (recipeKind === "muffin" || recipeKind === "cookie" || recipeKind === "pancake") {
+    return "Butter and oil are the largest calorie sources in baked goods; replacing most fat with applesauce and Greek yogurt preserves moisture with far fewer calories than full butter.";
+  }
+  return "Replacing part of the fat with applesauce lowers calories while keeping moisture in savory or baked applications.";
+}
+
+function lowCalorieEggLine(eggCount: number): string {
+  const n = Math.max(1, eggCount);
+  if (n === 1) {
+    return "1 large egg white";
+  }
+  if (n === 2) {
+    return "1 large egg + 2 large egg whites";
+  }
+  return `${n - 1} large egg whites + 1 large egg`;
+}
+
+function lowCalorieEggRationale(): string {
+  return "Egg whites trim fat calories vs. yolks; removing all yolks can reduce richness—applesauce and yogurt in the wet mix help compensate.";
+}
+
+function lowCalorieSugarRationale(recipeKind: RecipeKind): string {
+  if (recipeKind === "muffin" || recipeKind === "cookie" || recipeKind === "pancake") {
+    return "Moderate sugar reduction (e.g., 1 cup → ¾ cup) meaningfully lowers calories without making muffins taste flat; pair with extra vanilla or cinnamon for balance.";
+  }
+  return "Reduced sugar lowers caloric density; boost other flavors so the dish stays satisfying.";
+}
+
 function flaxEggLine(eggCount: number): string {
   if (eggCount <= 1) {
     return "1 flax egg: 1 tbsp ground flaxseed + 3 tbsp water";
@@ -117,6 +186,44 @@ function flaxEggLine(eggCount: number): string {
 function aquafabaText(eggCount: number): string {
   const tbsp = Math.max(2, eggCount * 2);
   return `${tbsp} tbsp aquafaba (whipped to soft peaks)`;
+}
+
+function allergenFreeMilkLine(qty: string): string {
+  return qty ? `${qty} rice milk` : "rice milk";
+}
+
+function allergenFreeMilkRationale(): string {
+  return "Rice milk is a neutral, dairy-free option without tree-nut proteins. Use certified gluten-free oat milk only if needed and tolerated.";
+}
+
+function allergenFreeEggLine(eggCount: number, recipeKind: RecipeKind): string {
+  const n = Math.max(1, eggCount);
+  if (recipeKind === "muffin" || recipeKind === "cookie" || recipeKind === "pancake") {
+    return aquafabaText(n);
+  }
+  return `${n} tbsp aquafaba (whipped) or ${n} flax egg(s) if seed allergies are not a concern`;
+}
+
+function allergenFreeEggRationale(recipeKind: RecipeKind): string {
+  if (recipeKind === "muffin" || recipeKind === "cookie" || recipeKind === "pancake") {
+    return "Aquafaba replaces egg whites for lift and binding without dairy, gluten, or tree-nut ingredients.";
+  }
+  return "Aquafaba binds without eggs; flax or chia gel may be used only when seed allergies are not a concern.";
+}
+
+const ALLERGEN_FREE_MILK_LABEL = "rice milk";
+
+function isTreeNutMilkLine(ing: ParsedIngredient): boolean {
+  return /\b(almond|cashew|hazelnut|macadamia|walnut)\s+milk\b/.test(descOf(ing));
+}
+
+function isNutIngredientLine(ing: ParsedIngredient): boolean {
+  const d = descOf(ing);
+  return /\b(walnut|pecan|almond|hazelnut|cashew|macadamia|pistachio|peanut)s?\b/.test(d);
+}
+
+function isAlmondFlourLine(ing: ParsedIngredient): boolean {
+  return /\balmond flour\b/.test(descOf(ing));
 }
 
 function isEggLine(ing: ParsedIngredient): boolean {
@@ -192,6 +299,74 @@ function isCheeseLine(ing: ParsedIngredient): boolean {
 
 function isVanillaLine(ing: ParsedIngredient): boolean {
   return /\bvanilla\b/.test(descOf(ing));
+}
+
+function isBlueberryLine(ing: ParsedIngredient): boolean {
+  return /\bblueberr/i.test(descOf(ing));
+}
+
+function costOptimizedBlueberryLine(qty: string): string {
+  const amount = qty.trim() || "1½ cups";
+  return `${amount} frozen blueberries (do not thaw; fold in frozen)`;
+}
+
+function costOptimizedMilkLine(qty: string, recipeKind: RecipeKind): string {
+  const amount = qty.trim() || "1 cup";
+  if (recipeKind === "muffin" || recipeKind === "pancake" || recipeKind === "cookie") {
+    return `${amount} skim milk or reconstituted dry milk`;
+  }
+  return `${amount} skim milk`;
+}
+
+function costOptimizedMilkRationale(recipeKind: RecipeKind): string {
+  if (recipeKind === "muffin" || recipeKind === "pancake" || recipeKind === "cookie") {
+    return "Skim or dry milk costs less than whole milk with modest impact on richness. Water may be substituted for maximum savings, but expect a drier, less tender crumb.";
+  }
+  return "Skim milk lowers cost vs. whole or specialty milk with a small reduction in richness.";
+}
+
+function highProteinFlourLine(qty: string, recipeKind: RecipeKind): string {
+  const n = parseQuantityNumber(qty);
+  if (recipeKind === "muffin" || recipeKind === "cookie" || recipeKind === "pancake") {
+    if (qty.includes("cup") && n >= 1.5) {
+      return "1½ cups all-purpose flour + ½ cup vanilla whey protein powder";
+    }
+    if (qty.includes("cup") && n === 1) {
+      return "¾ cup all-purpose flour + ¼ cup vanilla whey protein powder";
+    }
+    return `${qty} all-purpose flour — swap about ¼ of the flour volume for vanilla whey protein powder (never replace all flour)`;
+  }
+  return `${halveQuantityText(qty)} all-purpose flour + ${halveQuantityText(qty)} unflavored whey protein isolate`;
+}
+
+function highProteinFlourRationale(recipeKind: RecipeKind): string {
+  if (recipeKind === "muffin" || recipeKind === "cookie" || recipeKind === "pancake") {
+    return "Replacing ~25% of flour with vanilla whey protein powder is the largest protein gain in muffins; exceeding ~⅓ can make the crumb dry and dense. Whole wheat adds fiber but only modest protein.";
+  }
+  return "Partial flour replacement with whey isolate boosts protein while keeping starch for structure.";
+}
+
+function highProteinMilkLine(qty: string, recipeKind: RecipeKind): string {
+  if (recipeKind === "muffin" || recipeKind === "pancake" || recipeKind === "cookie") {
+    return `¼ cup plain Greek yogurt (2%) + ${qty.replace(/whole|full-fat/gi, "").trim() || qty} milk`;
+  }
+  return `½ cup plain Greek yogurt (2%) + ${qty} milk`;
+}
+
+function highProteinMilkRationale(recipeKind: RecipeKind): string {
+  return "Greek yogurt adds concentrated protein and moisture; keep some milk in the mix so protein powder or extra whites do not dry the batter.";
+}
+
+function highProteinEggLine(ing: ParsedIngredient, eggCount: number): string {
+  const n = Math.max(1, Math.round(parseQuantityNumber(`${ing.quantity} ${ing.description}`)) || eggCount);
+  if (n === 1) {
+    return "1 large egg + 1 large egg white";
+  }
+  return `${n} large eggs + ${n} large egg whites`;
+}
+
+function highProteinEggRationale(): string {
+  return "Extra egg whites add lean protein with less fat than additional whole eggs.";
 }
 
 function isEggPastaLine(ing: ParsedIngredient): boolean {
@@ -286,6 +461,44 @@ function transformIngredient(
     return { line: raw, subs };
   }
 
+  if (recipeKind === "bowl" && goal === "high-protein") {
+    if (isGroundMeatLine(ing)) {
+      const line = qty
+        ? `${qty} extra-lean ground turkey or chicken breast`
+        : "extra-lean ground turkey or chicken breast";
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Lean poultry raises protein per serving with less fat than regular ground beef."
+      );
+      return { line, subs };
+    }
+    if (isSourCreamLine(ing)) {
+      const line = qty ? `${qty} plain Greek yogurt (2%)` : "plain Greek yogurt (2%)";
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Greek yogurt replaces sour cream with more protein and similar tang."
+      );
+      return { line, subs };
+    }
+    if (isCheeseLine(ing)) {
+      const line = qty
+        ? `${qty} low-fat cottage cheese or part-skim shredded cheese`
+        : "low-fat cottage cheese or part-skim shredded cheese";
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Cottage cheese or part-skim cheese adds protein vs. full-fat melting cheese alone."
+      );
+      return { line, subs };
+    }
+    return { line: raw, subs };
+  }
+
   if (isEggLine(ing)) {
     if (goal === "vegan") {
       const n = Math.max(1, Math.round(parseQuantityNumber(`${ing.quantity} ${ing.description}`)));
@@ -295,22 +508,19 @@ function transformIngredient(
     }
     if (goal === "allergen-free") {
       const n = Math.round(parseQuantityNumber(`${ing.quantity} ${ing.description}`)) || 1;
-      const line = aquafabaText(n);
-      pushSub(subs, raw, line, "Aquafaba replaces egg whites for lift and binding.");
+      const line = allergenFreeEggLine(n, recipeKind);
+      pushSub(subs, raw, line, allergenFreeEggRationale(recipeKind));
       return { line, subs };
     }
     if (goal === "low-calorie") {
       const n = Math.round(parseQuantityNumber(`${ing.quantity} ${ing.description}`)) || 1;
-      const line =
-        n === 1
-          ? "1 large egg white"
-          : `${n} large egg whites`;
-      pushSub(subs, raw, line, "Egg whites retain structure without yolk fat.");
+      const line = lowCalorieEggLine(n);
+      pushSub(subs, raw, line, lowCalorieEggRationale());
       return { line, subs };
     }
     if (goal === "high-protein" && eggCount > 0) {
-      const line = `${raw} + 1 additional egg white`;
-      pushSub(subs, raw, line, "Extra albumin supports structure with added protein.");
+      const line = highProteinEggLine(ing, eggCount);
+      pushSub(subs, raw, line, highProteinEggRationale());
       return { line, subs };
     }
     return { line: raw, subs };
@@ -331,21 +541,21 @@ function transformIngredient(
       const isSoftened = /\bsoftened\b/i.test(desc);
       const isMelted = /\bmelted\b/i.test(desc);
       const line = isSoftened
-        ? `${qty} vegetable shortening, softened`
+        ? `${qty} vegetable oil or neutral oil`
         : isMelted
           ? `${qty} vegetable oil, melted`
-          : `${qty} vegetable oil`;
-      pushSub(subs, raw, line, "Commodity oil lowers ingredient cost vs. butter.");
+          : `${qty} vegetable oil or neutral oil`;
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Vegetable or neutral oil costs less than butter; the crumb may be slightly less rich but still tender in muffins."
+      );
       return { line, subs };
     }
     if (goal === "low-calorie") {
-      const modifiers = desc.includes(",") ? desc.split(",").slice(1).join(",").trim() : "";
-      const modSuffix = modifiers ? ` (${modifiers})` : "";
-      const line =
-        parseQuantityNumber(qty) >= 0.25
-          ? `2 tbsp olive oil + 2 tbsp unsweetened applesauce${modSuffix}`
-          : `${qty} olive oil${modSuffix}`;
-      pushSub(subs, raw, line, "Reduces saturated fat calories while keeping moisture.");
+      const line = lowCalorieButterLine(qty, desc, recipeKind);
+      pushSub(subs, raw, line, lowCalorieButterRationale(recipeKind));
       return { line, subs };
     }
     return { line: raw, subs };
@@ -362,6 +572,58 @@ function transformIngredient(
       );
       return { line, subs };
     }
+    if (goal === "allergen-free") {
+      const line = `${qty} full-fat coconut milk (FDA tree-nut classification—omit if coconut is an allergen)`;
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Coconut milk adds richness without dairy; note tree-nut classification and choose rice milk if coconut must be avoided."
+      );
+      return { line, subs };
+    }
+    return { line: raw, subs };
+  }
+
+  if (isTreeNutMilkLine(ing)) {
+    if (goal === "allergen-free") {
+      const line = allergenFreeMilkLine(qty);
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Tree-nut milks are common allergens; rice milk is a safer neutral substitute."
+      );
+      return { line, subs };
+    }
+    return { line: raw, subs };
+  }
+
+  if (isNutIngredientLine(ing)) {
+    if (goal === "allergen-free") {
+      const line = "omit (or use certified allergen-free sunflower seed butter if seeds are tolerated)";
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Nuts and peanuts are major allergens and are removed from the reformulation."
+      );
+      return { line, subs };
+    }
+    return { line: raw, subs };
+  }
+
+  if (isAlmondFlourLine(ing)) {
+    if (goal === "allergen-free") {
+      const line = `${qty} gluten-free 1:1 baking flour blend`;
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Almond flour contains tree-nut proteins; a certified gluten-free blend is safer for allergen-free baking."
+      );
+      return { line, subs };
+    }
     return { line: raw, subs };
   }
 
@@ -372,8 +634,8 @@ function transformIngredient(
       return { line, subs };
     }
     if (goal === "allergen-free") {
-      const line = `${qty} oat milk (certified allergen-free)`;
-      pushSub(subs, raw, line, "Dairy-free milk substitute with mild flavor and good emulsification.");
+      const line = allergenFreeMilkLine(qty);
+      pushSub(subs, raw, line, allergenFreeMilkRationale());
       return { line, subs };
     }
     if (goal === "cost-optimization" && /\bbuttermilk\b/.test(descOf(ing))) {
@@ -381,14 +643,25 @@ function transformIngredient(
       pushSub(subs, raw, line, "Acidified milk mimics buttermilk at lower cost.");
       return { line, subs };
     }
+    if (goal === "cost-optimization" && /\bmilk\b/.test(descOf(ing))) {
+      const line = costOptimizedMilkLine(qty, recipeKind);
+      pushSub(subs, raw, line, costOptimizedMilkRationale(recipeKind));
+      return { line, subs };
+    }
     if (goal === "low-calorie") {
-      const line = `${qty.replace(/whole|full-fat/gi, "").trim() || qty} skim milk`;
-      pushSub(subs, raw, line, "Skim milk lowers fat calories in the wet mix.");
+      const amount = qty.replace(/whole|full-fat/gi, "").trim() || qty;
+      const line = `${amount} skim milk`;
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Skim milk replaces whole or full-fat dairy with fewer fat calories in the wet mix."
+      );
       return { line, subs };
     }
     if (goal === "high-protein" && /\bmilk\b/.test(descOf(ing))) {
-      const line = `¼ cup Greek yogurt (2%) + ${qty} milk`;
-      pushSub(subs, raw, line, "Greek yogurt adds protein and moisture for a higher-protein batter.");
+      const line = highProteinMilkLine(qty, recipeKind);
+      pushSub(subs, raw, line, highProteinMilkRationale(recipeKind));
       return { line, subs };
     }
     return { line: raw, subs };
@@ -405,24 +678,17 @@ function transformIngredient(
 
   if (isFlourLine(ing)) {
     if (goal === "allergen-free") {
-      const line = `${qty} gluten-free 1:1 baking flour`;
-      pushSub(subs, raw, line, "Certified gluten-free flour removes wheat gluten from the formula.");
+      const line = `${qty} gluten-free 1:1 baking flour blend`;
+      pushSub(subs, raw, line, "Certified gluten-free flour blend removes wheat gluten from the formula.");
       return { line, subs };
     }
     if (goal === "high-protein") {
-      const line = `${halveQuantityText(qty)} all-purpose flour + ${halveQuantityText(qty)} unflavored whey protein isolate`;
-      pushSub(subs, raw, line, "Partial flour replacement with whey isolate boosts protein per serving.");
+      const line = highProteinFlourLine(qty, recipeKind);
+      pushSub(subs, raw, line, highProteinFlourRationale(recipeKind));
       return { line, subs };
     }
     if (goal === "low-calorie" && /\ball-purpose\b/.test(descOf(ing))) {
-      const line = `${qty} whole wheat flour`;
-      pushSub(subs, raw, line, "Whole wheat adds fiber for satiety with modest calorie trade-off.");
-      return { line, subs };
-    }
-    if (goal === "cost-optimization") {
-      const line = `${qty} enriched all-purpose flour`;
-      pushSub(subs, raw, line, "Standard enriched flour is economical and consistent for production.");
-      return { line, subs };
+      return { line: raw, subs };
     }
     return { line: raw, subs };
   }
@@ -435,8 +701,9 @@ function transformIngredient(
       return { line, subs };
     }
     if (goal === "low-calorie") {
-      const line = `${halveQuantityText(qty)} ${desc}`;
-      pushSub(subs, raw, line, "Reduced sugar lowers caloric density of the finished product.");
+      const reduced = moderateReduceSugarQuantityText(qty);
+      const line = `${reduced} ${desc}`;
+      pushSub(subs, raw, line, lowCalorieSugarRationale(recipeKind));
       return { line, subs };
     }
     return { line: raw, subs };
@@ -479,6 +746,31 @@ function transformIngredient(
     const line = `${qty} imitation vanilla extract`;
     pushSub(subs, raw, line, "Imitation vanilla offers consistent potency at lower cost.");
     return { line, subs };
+  }
+
+  if (isBlueberryLine(ing)) {
+    if (goal === "cost-optimization") {
+      const line = costOptimizedBlueberryLine(qty);
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Frozen blueberries cost less than fresh and bleed less into the batter when folded in frozen."
+      );
+      return { line, subs };
+    }
+    if (goal === "low-calorie") {
+      const amount = qty.trim() || "1½ cups";
+      const line = `${amount} blueberries (add an extra 2 tbsp for burst flavor at minimal calorie cost)`;
+      pushSub(
+        subs,
+        raw,
+        line,
+        "Extra berries add flavor and moisture without the calorie load of butter or sugar."
+      );
+      return { line, subs };
+    }
+    return { line: raw, subs };
   }
 
   return { line: raw, subs };
@@ -557,6 +849,14 @@ function pancakeMethod(recipe: ParsedRecipe, goal: OptimizationGoal): string[] {
   } else if (hasButtermilk && goal !== "allergen-free") {
     steps.push(
       "In a separate bowl, whisk the buttermilk, egg, melted butter, and vanilla until combined."
+    );
+  } else if (goal === "allergen-free") {
+    const wetParts: string[] = [];
+    if (hasButtermilk || hasMilk) wetParts.push(ALLERGEN_FREE_MILK_LABEL);
+    wetParts.push("egg substitute (aquafaba)", "neutral oil or dairy-free spread");
+    if (hasIngredient(recipe, [/vanilla/])) wetParts.push("vanilla");
+    steps.push(
+      `In a separate bowl, whisk the ${wetParts.join(", ")} until smooth.`
     );
   } else {
     steps.push(
@@ -642,6 +942,28 @@ function muffinMethod(recipe: ParsedRecipe, goal: OptimizationGoal): string[] {
     steps.push(
       `Prepare the flax egg and let gel 10 minutes. In another bowl, combine ${wetItems.join(", ")}.`
     );
+  } else if (goal === "allergen-free") {
+    const wetItems: string[] = [];
+    if (hasBananas) wetItems.push("mashed bananas");
+    if (hasButter) wetItems.push("melted dairy-free spread or neutral oil");
+    if (hasSugar && hasBananas) wetItems.push("sugar");
+    if (hasEggs) wetItems.push("aquafaba (whipped to soft peaks)");
+    if (hasVanilla) wetItems.push("vanilla");
+    if (hasMilk) wetItems.push(ALLERGEN_FREE_MILK_LABEL);
+
+    steps.push(`Whisk ${wetItems.join(", ")} in a separate bowl until smooth.`);
+  } else if (goal === "low-calorie") {
+    const wetItems: string[] = [];
+    if (hasBananas) wetItems.push("mashed bananas");
+    if (hasButter) {
+      wetItems.push("neutral oil, unsweetened applesauce, and plain nonfat Greek yogurt");
+    }
+    if (hasSugar) wetItems.push("reduced sugar");
+    if (hasEggs) wetItems.push("egg whites (or 1 whole egg plus extra whites for structure)");
+    if (hasVanilla) wetItems.push("vanilla (consider an extra splash)");
+    if (hasMilk) wetItems.push("skim milk");
+
+    steps.push(`Whisk ${wetItems.join(", ")} in a separate bowl until smooth.`);
   } else {
     const wetItems: string[] = [];
     if (hasBananas) wetItems.push("mashed bananas");
@@ -662,7 +984,11 @@ function muffinMethod(recipe: ParsedRecipe, goal: OptimizationGoal): string[] {
     steps.push("Fold in the chocolate chips.");
   }
   if (hasBlueberries) {
-    steps.push("Gently fold in the blueberries.");
+    steps.push(
+      goal === "cost-optimization"
+        ? "Gently fold in frozen blueberries straight from the freezer—do not thaw—to limit bleeding and keep muffin tops evenly golden."
+        : "Gently fold in the blueberries."
+    );
   }
 
   steps.push(
@@ -735,7 +1061,7 @@ function cookieMethod(recipe: ParsedRecipe, goal: OptimizationGoal): string[] {
     const beatIn: string[] = [];
     if (hasEggs) beatIn.push("aquafaba");
     if (hasVanilla) beatIn.push("vanilla");
-    if (hasMilk) beatIn.push("oat milk");
+    if (hasMilk) beatIn.push(ALLERGEN_FREE_MILK_LABEL);
     if (beatIn.length > 0) {
       steps.push(`Beat in ${beatIn.join(", ")}.`);
     }
@@ -758,7 +1084,7 @@ function cookieMethod(recipe: ParsedRecipe, goal: OptimizationGoal): string[] {
   if (hasChips) {
     steps.push("Fold in chocolate chips evenly throughout the dough.");
   }
-  if (hasNuts) {
+  if (hasNuts && goal !== "allergen-free") {
     steps.push("Fold in nuts until distributed through the dough.");
   }
 
@@ -1016,6 +1342,9 @@ export function generateFoodScienceNotes(
       notes.push(
         `${title}: aquafaba adds moisture and light structure in place of eggs; avoid over-mixing once wet ingredients are added.`
       );
+      notes.push(
+        "Use rice milk or certified gluten-free oat milk for dairy—avoid tree-nut milks such as almond or cashew."
+      );
     } else if (goal === "sugar-reduction") {
       notes.push(
         `${title}: reduced sugar slows browning—pancakes may look paler before they are done; rely on bubble formation and edge set for doneness.`
@@ -1051,8 +1380,27 @@ export function generateFoodScienceNotes(
       }
     } else if (goal === "high-protein") {
       notes.push(
-        `${title}: sift whey protein with flour to prevent clumping; slightly lower bake temperature helps centers set without drying.`
+        `${title}: sift vanilla whey protein powder with flour before mixing; bake at 325–350°F and check early to avoid over-drying the crumb.`
       );
+    } else if (goal === "low-calorie") {
+      notes.push(
+        `${title}: butter and sugar are the primary calorie drivers—partial fat replacement with applesauce and yogurt plus moderate sugar cuts deliver the biggest savings per muffin.`
+      );
+      notes.push(
+        `${title}: boost flavor with extra vanilla, cinnamon, lemon zest, or a few more blueberries so the lighter version does not taste bland.`
+      );
+      notes.push(
+        `${title}: expect a slightly lighter crumb, less richness, and marginally paler browning than the full-butter original; do not over-bake.`
+      );
+    } else if (goal === "cost-optimization") {
+      notes.push(
+        `${title}: keep base dry ingredients (flour, sugar, salt, leavening) unchanged—savings come from butter-to-oil, cheaper milk, and frozen vs. fresh blueberries.`
+      );
+      if (hasIngredient(recipe, [/blueberr/])) {
+        notes.push(
+          `${title}: fold frozen blueberries in without thawing to reduce cost and minimize purple streaking in the crumb.`
+        );
+      }
     } else {
       notes.push(
         `${title}: portion cups two-thirds full for even dome formation and consistent bake time across the tray.`
@@ -1116,11 +1464,47 @@ export function generateFoodScienceNotes(
     );
   }
 
-  if (substitutions.some((s) => /flax/i.test(s.replacement))) {
+  if (substitutions.some((s) => /flax|chia/i.test(s.replacement)) && goal === "allergen-free") {
+    notes.push(
+      "Flax or chia egg replacers contain seeds—use only when seed allergies are not a concern."
+    );
+  } else if (substitutions.some((s) => /flax/i.test(s.replacement))) {
     notes.push("Flax gel relies on soluble fiber for binding; allow full gel time before mixing for best cohesion.");
   }
 
-  return notes.slice(0, 4);
+  if (goal === "high-protein") {
+    notes.unshift(HIGH_PROTEIN_RATIONALE_NOTE);
+    if (kind === "muffin" || kind === "cookie" || kind === "pancake") {
+      notes.push(
+        `${title}: cap whey protein powder at ~¼ of total flour—more absorbs moisture and creates dry, dense baked goods.`
+      );
+      notes.push(
+        `${title}: whisk Greek yogurt and milk into wet ingredients smoothly; add 1–2 tbsp extra milk if the batter looks stiff after protein additions.`
+      );
+    }
+    if (kind === "bowl") {
+      notes.push(
+        `${title}: layer Greek yogurt or cottage cheese and lean poultry for protein; whole grains add fiber but are not the main protein driver.`
+      );
+    }
+  }
+
+  if (goal === "low-calorie") {
+    notes.unshift(LOW_CALORIE_RATIONALE_NOTE);
+    if (kind === "muffin" || kind === "cookie" || kind === "pancake") {
+      notes.push(
+        `${title}: whisk applesauce and Greek yogurt into wet ingredients until smooth; add 1–2 tbsp skim milk if the batter looks stiff after cutting butter.`
+      );
+    }
+  }
+
+  if (goal === "allergen-free") {
+    notes.unshift(
+      "Select certified allergen-free ingredients and confirm facility labels—cross-contamination risk varies by brand."
+    );
+  }
+
+  return notes.slice(0, 5);
 }
 
 export function generateExpectedResult(
@@ -1157,6 +1541,21 @@ export function generateExpectedResult(
       }
       return `Moist ${title} with a tender crumb and domed tops. Comparable to conventional muffins when using the same quantities of plant-based butter or oil.`;
     }
+    if (goal === "cost-optimization") {
+      if (hasBlueberries) {
+        return `Economical ${title} with a soft crumb and burst blueberry pockets. Vegetable oil and skim or dry milk trim cost vs. butter and whole milk; frozen berries replace fresh with minimal quality loss when folded in frozen.`;
+      }
+      return `Cost-optimized ${title} with an evenly risen crumb. Target savings from fat and dairy swaps while keeping flour, sugar, salt, and leavening unchanged.`;
+    }
+    if (goal === "high-protein") {
+      return `Higher-protein ${title} with a tender crumb when whey powder replaces only part of the flour (~25%). Greek yogurt and extra egg whites boost protein without the dry, dense texture that comes from swapping too much flour for protein powder.`;
+    }
+    if (goal === "low-calorie") {
+      if (hasBlueberries) {
+        return `Lighter ${title} with a tender, slightly leaner crumb. Moderate sugar reduction and replacing most butter with applesauce and nonfat Greek yogurt cut calories meaningfully; extra vanilla, cinnamon, or berries keep flavor bright. Expect less richness and slightly paler tops than the full-fat original.`;
+      }
+      return `Lighter ${title} with a tender crumb and balanced flavor. Fat and sugar swaps drive most of the calorie reduction; the texture may be slightly softer and less rich than the original.`;
+    }
     return `Evenly risen ${title} with a soft crumb and balanced flavor aligned with the ${OPTIMIZATION_GOAL_LABEL[goal]} target.`;
   }
 
@@ -1171,6 +1570,9 @@ export function generateExpectedResult(
   if (kind === "bowl") {
     if (goal === "low-calorie") {
       return `A lighter ${title} with 1/2 cup rice per serving, lean turkey, reduced cheese, and tangy Greek yogurt or light sour cream. Salsa, beans, corn, and cilantro keep the bowl bright and satisfying at a lower calorie count.`;
+    }
+    if (goal === "high-protein") {
+      return `A protein-forward ${title} with lean poultry, Greek yogurt or cottage cheese, and balanced toppings. Savory bowls gain the most protein from animal or dairy sources—not from whole grains alone.`;
     }
     return `${title} with warm rice, seasoned protein, and fresh toppings layered for a balanced, customizable bowl.`;
   }

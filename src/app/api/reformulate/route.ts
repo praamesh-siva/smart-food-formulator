@@ -40,7 +40,40 @@ Rules:
 - Preserve original quantities unless a substitution requires a change.
 - Method steps must match the recipe type (bowl, bake, sauté, grill, etc.)—never use generic baking dry/wet mixing for savory dishes, bowls, or proteins like salmon.
 - List only meaningful substitutions in the substitutions array.
-- Provide 2–4 food science notes and a concise expected result.`;
+- Provide 2–4 food science notes and a concise expected result.
+
+Allergen-free goal (when optimization goal is Allergen-free):
+- NEVER suggest tree-nut milks (almond, cashew, hazelnut) or nut-based flours as default substitutes.
+- For dairy milk: prefer rice milk; use certified gluten-free oat milk only when appropriate and label it as such; coconut milk only with a note that coconut is classified as a tree nut by the FDA.
+- Avoid soy milk unless no other option applies.
+- For eggs in baking: prefer aquafaba or commercial egg replacer; use flax/chia only when seed allergies are not a concern and note that limitation.
+- Replace wheat flour with certified gluten-free 1:1 baking flour blends.
+- Remove or replace nuts, peanuts, dairy, eggs, and gluten-containing ingredients with safer alternatives.
+- Include a food science note reminding users to verify ingredient labels and cross-contamination risk.
+
+Cost optimization goal (when optimization goal is Cost optimization):
+- For blueberry muffins and similar bakes: suggest frozen blueberries instead of fresh (fold in frozen, do not thaw).
+- Replace butter with vegetable oil or a lower-cost neutral oil; note slightly reduced richness.
+- For milk: prefer skim milk or reconstituted dry milk over whole milk; water is acceptable only with an explicit note that the crumb will be less rich and tender.
+- Keep inexpensive base ingredients (flour, sugar, salt, baking powder/soda) unchanged unless there is a clear functional reason to swap them.
+
+High protein goal (when optimization goal is High protein):
+- First identify where the recipe already has protein (eggs, dairy, meat, flour) and where gains are realistic.
+- Prioritize Greek yogurt, extra egg whites, vanilla whey protein powder, cottage cheese, lean poultry, or partial whey flour replacement—match swaps to the recipe type.
+- For muffins, cookies, and pancakes: replace about 25% of flour with vanilla whey protein powder, never all of it; warn that excess protein powder makes baked goods dry and dense.
+- When using Greek yogurt or protein powder, suggest moisture-balancing steps (retain some milk, add 1–2 tbsp extra liquid if batter is stiff, do not over-mix).
+- Whole wheat flour may add fiber and slightly more protein but explain it is not a major protein boost.
+- Include a short protein rationale in foodScienceNotes explaining which substitutions increase protein the most.
+
+Low calorie goal (when optimization goal is Low calorie):
+- First identify the biggest calorie sources: butter/oil, sugar, full-fat dairy, chocolate, nuts, and oversized portions of calorie-dense ingredients.
+- For blueberry muffins and similar bakes: reduce sugar moderately (e.g., 1 cup sugar → ½ to ¾ cup sugar), not an extreme cut that makes the product bland.
+- Replace most butter/oil with a moisture-supporting lower-calorie blend—unsweetened applesauce, plain nonfat Greek yogurt, or mashed banana—keeping only 1–2 tbsp oil when needed for texture and browning.
+- Use skim milk or other lower-calorie milk instead of whole milk or buttermilk when appropriate.
+- Use egg whites where appropriate; if removing yolks, note that richness and tenderness may decrease and compensate with yogurt or applesauce in the wet mix.
+- Avoid a dry, bland result: suggest flavor-support options such as extra vanilla, cinnamon, lemon zest, or a modest handful of extra blueberries.
+- Include a short calorie rationale in foodScienceNotes explaining which swaps reduce calories the most (fat and sugar first).
+- Note quality tradeoffs: lighter texture, less richness, slightly less browning, or a softer dome compared with the full-fat original.`;
 
 type OpenAIAttempt =
   | { ok: true; data: ReformulateApiResponse }

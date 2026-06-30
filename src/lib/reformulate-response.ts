@@ -4,7 +4,12 @@ import type {
   OptimizationGoal,
   Substitution,
 } from "./formulation-types";
-import { OPTIMIZATION_GOALS } from "./formulation-types";
+import {
+  ALLERGEN_FREE_DISCLAIMER,
+  HIGH_PROTEIN_RATIONALE_NOTE,
+  LOW_CALORIE_RATIONALE_NOTE,
+  OPTIMIZATION_GOALS,
+} from "./formulation-types";
 
 export interface ReformulateApiResponse {
   title: string;
@@ -165,6 +170,65 @@ export function generateFallbackApiResponse(
   );
 }
 
+const TREE_NUT_MILK_PATTERN =
+  /\b(almond|cashew|hazelnut|macadamia|walnut)\s+milk\b/gi;
+
+function sanitizeAllergenFreeLine(text: string): string {
+  let result = text.replace(TREE_NUT_MILK_PATTERN, "rice milk");
+  if (
+    /\boat milk\b/i.test(result) &&
+    !/certified gluten-free oat milk/i.test(result)
+  ) {
+    result = result.replace(
+      /\boat milk\b/gi,
+      "rice milk (or certified gluten-free oat milk if tolerated)"
+    );
+  }
+  return result.replace(/\bsoy milk\b/gi, "rice milk");
+}
+
+function sanitizeAllergenFreeResponse(
+  data: ReformulateApiResponse
+): ReformulateApiResponse {
+  return {
+    ...data,
+    ingredients: data.ingredients.map(sanitizeAllergenFreeLine),
+    method: data.method.map(sanitizeAllergenFreeLine),
+    substitutions: data.substitutions.map((sub) => ({
+      original: sub.original,
+      replacement: sanitizeAllergenFreeLine(sub.replacement),
+      rationale: sanitizeAllergenFreeLine(sub.rationale),
+    })),
+    foodScienceNotes: data.foodScienceNotes.map(sanitizeAllergenFreeLine),
+    expectedResult: sanitizeAllergenFreeLine(data.expectedResult),
+  };
+}
+
+function withAllergenFreeDisclaimer(notes: string[]): string[] {
+  if (notes.some((note) => note.includes(ALLERGEN_FREE_DISCLAIMER.slice(0, 40)))) {
+    return notes;
+  }
+  return [ALLERGEN_FREE_DISCLAIMER, ...notes];
+}
+
+function withHighProteinRationale(notes: string[]): string[] {
+  if (
+    notes.some((note) =>
+      note.toLowerCase().includes("protein rationale")
+    )
+  ) {
+    return notes;
+  }
+  return [HIGH_PROTEIN_RATIONALE_NOTE, ...notes];
+}
+
+function withLowCalorieRationale(notes: string[]): string[] {
+  if (notes.some((note) => note.toLowerCase().includes("calorie rationale"))) {
+    return notes;
+  }
+  return [LOW_CALORIE_RATIONALE_NOTE, ...notes];
+}
+
 export function apiResponseToFormulationResult(
   data: ReformulateApiResponse,
   originalRecipe: string,
@@ -174,14 +238,26 @@ export function apiResponseToFormulationResult(
   const goalLabel =
     OPTIMIZATION_GOALS.find((g) => g.value === goal)?.label ?? goal;
 
+  const normalized =
+    goal === "allergen-free" ? sanitizeAllergenFreeResponse(data) : data;
+
+  const foodScienceNotes =
+    goal === "allergen-free"
+      ? withAllergenFreeDisclaimer(normalized.foodScienceNotes)
+      : goal === "high-protein"
+        ? withHighProteinRationale(normalized.foodScienceNotes)
+        : goal === "low-calorie"
+          ? withLowCalorieRationale(normalized.foodScienceNotes)
+          : normalized.foodScienceNotes;
+
   return {
-    recipeName: data.title || "Your Recipe",
+    recipeName: normalized.title || "Your Recipe",
     goalLabel,
-    reformulatedIngredients: data.ingredients,
-    updatedMethod: data.method,
-    keySubstitutions: data.substitutions,
-    foodScienceNotes: data.foodScienceNotes,
-    expectedResult: data.expectedResult,
+    reformulatedIngredients: normalized.ingredients,
+    updatedMethod: normalized.method,
+    keySubstitutions: normalized.substitutions,
+    foodScienceNotes,
+    expectedResult: normalized.expectedResult,
     originalRecipeReference: originalRecipe,
     source,
   };
