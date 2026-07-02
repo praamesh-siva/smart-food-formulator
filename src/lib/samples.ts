@@ -53,3 +53,18 @@ export const SAMPLE_RECIPES: SampleRecipe[] = [
 1 tsp vanilla extract`,
   },
 ];
+
+export const PANTRY_STAPLES = [
+  "Cooking oil",
+  "Salt",
+  "Onions",
+  "Garlic",
+  "Eggs",
+  "Rice",
+  "Pasta",
+  "Canned tomatoes",
+  "Butter",
+  "Flour",
+  "Chicken or vegetable broth",
+  "Lemons",
+] as const;

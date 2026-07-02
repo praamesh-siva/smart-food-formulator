@@ -1,9 +1,5 @@
 import type { OptimizationGoal, Substitution } from "./formulation-types";
 import {
-  HIGH_PROTEIN_RATIONALE_NOTE,
-  LOW_CALORIE_RATIONALE_NOTE,
-} from "./formulation-types";
-import {
   countEggs,
   findOriginalLine,
   formatIngredient,
@@ -1473,7 +1469,6 @@ export function generateFoodScienceNotes(
   }
 
   if (goal === "high-protein") {
-    notes.unshift(HIGH_PROTEIN_RATIONALE_NOTE);
     if (kind === "muffin" || kind === "cookie" || kind === "pancake") {
       notes.push(
         `${title}: cap whey protein powder at ~¼ of total flour—more absorbs moisture and creates dry, dense baked goods.`
@@ -1490,18 +1485,11 @@ export function generateFoodScienceNotes(
   }
 
   if (goal === "low-calorie") {
-    notes.unshift(LOW_CALORIE_RATIONALE_NOTE);
     if (kind === "muffin" || kind === "cookie" || kind === "pancake") {
       notes.push(
         `${title}: whisk applesauce and Greek yogurt into wet ingredients until smooth; add 1–2 tbsp skim milk if the batter looks stiff after cutting butter.`
       );
     }
-  }
-
-  if (goal === "allergen-free") {
-    notes.unshift(
-      "Select certified allergen-free ingredients and confirm facility labels—cross-contamination risk varies by brand."
-    );
   }
 
   return notes.slice(0, 5);

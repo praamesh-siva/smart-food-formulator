@@ -1,3 +1,5 @@
+export type AppMode = "reformulate" | "create-from-ingredients";
+
 export type OptimizationGoal =
   | "allergen-free"
   | "vegan"
@@ -108,6 +110,25 @@ export interface Substitution {
   rationale: string;
 }
 
+export interface MissingOptionalIngredient {
+  ingredient: string;
+  substitute: string;
+}
+
+export interface RecipeMetadata {
+  servings: string;
+  prepTime: string;
+  cookTime: string;
+  difficulty: string;
+}
+
+export const DEFAULT_RECIPE_METADATA: RecipeMetadata = {
+  servings: "3–4",
+  prepTime: "10 min",
+  cookTime: "20 min",
+  difficulty: "Easy",
+};
+
 export interface FormulationResult {
   recipeName: string;
   goalLabel: string;
@@ -118,4 +139,8 @@ export interface FormulationResult {
   expectedResult: string;
   originalRecipeReference: string | null;
   source?: "openai" | "fallback";
+  mode?: AppMode;
+  missingOptionalIngredients?: MissingOptionalIngredient[];
+  restrictionsReference?: string | null;
+  recipeMetadata?: RecipeMetadata;
 }

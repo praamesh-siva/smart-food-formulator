@@ -79,16 +79,37 @@ function SectionHeading({
 }
 
 function formatFormulationForCopy(result: FormulationResult): string {
+  const isCreate = result.mode === "create-from-ingredients";
+  const meta = result.recipeMetadata;
   const lines: string[] = [
     result.recipeName,
     `Goal: ${result.goalLabel}`,
+  ];
+
+  if (meta) {
+    lines.push(
+      `Servings: ${meta.servings}`,
+      `Prep time: ${meta.prepTime}`,
+      `Cook time: ${meta.cookTime}`,
+      `Difficulty: ${meta.difficulty}`
+    );
+  }
+
+  lines.push(
     "",
-    "Ingredients",
+    isCreate ? "Ingredients" : "Ingredients",
     ...result.reformulatedIngredients.map((item) => `- ${item}`),
     "",
     "Method",
-    ...result.updatedMethod.map((step, i) => `${i + 1}. ${step}`),
-  ];
+    ...result.updatedMethod.map((step, i) => `${i + 1}. ${step}`)
+  );
+
+  if (result.missingOptionalIngredients && result.missingOptionalIngredients.length > 0) {
+    lines.push("", "Suggested optional ingredients");
+    for (const item of result.missingOptionalIngredients) {
+      lines.push(`- ${item.ingredient} → ${item.substitute}`);
+    }
+  }
 
   if (result.keySubstitutions.length > 0) {
     lines.push("", "Substitutions");
@@ -111,6 +132,11 @@ function formatFormulationForCopy(result: FormulationResult): string {
 }
 
 export function FormulationOutput({ result }: FormulationOutputProps) {
+  const isCreate = result.mode === "create-from-ingredients";
+  const ingredientsTitle = isCreate ? "Recipe Ingredients" : "Reformulated Ingredients";
+  const methodTitle = isCreate ? "Cooking Method" : "Updated Method";
+  const meta = result.recipeMetadata;
+  const hasSubstitutions = result.keySubstitutions.length > 0;
   const [showOriginal, setShowOriginal] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -147,7 +173,7 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-100/90">
-                Formulation Report
+                {isCreate ? "Recipe Report" : "Formulation Report"}
               </p>
               <h2 className="font-display mt-1.5 text-2xl font-normal leading-tight tracking-tight text-white sm:text-3xl">
                 {result.recipeName}
@@ -185,10 +211,45 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
             </div>
           </div>
 
-          <dl className="mt-4 grid grid-cols-1 gap-2 rounded-xl bg-black/15 p-3 ring-1 ring-white/10 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-white/10">
+          <dl className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-black/15 p-3 ring-1 ring-white/10 sm:grid-cols-4">
+            <div className="sm:px-2">
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
+                Servings
+              </dt>
+              <dd className="mt-0.5 text-sm font-semibold text-white">
+                {meta?.servings ?? "3–4"}
+              </dd>
+            </div>
+            <div className="sm:px-2">
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
+                Prep time
+              </dt>
+              <dd className="mt-0.5 text-sm font-semibold text-white">
+                {meta?.prepTime ?? "10 min"}
+              </dd>
+            </div>
+            <div className="sm:px-2">
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
+                Cook time
+              </dt>
+              <dd className="mt-0.5 text-sm font-semibold text-white">
+                {meta?.cookTime ?? "20 min"}
+              </dd>
+            </div>
+            <div className="sm:px-2">
+              <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
+                Difficulty
+              </dt>
+              <dd className="mt-0.5 text-sm font-semibold text-white">
+                {meta?.difficulty ?? "Easy"}
+              </dd>
+            </div>
+          </dl>
+
+          <dl className="mt-2 grid grid-cols-1 gap-2 rounded-xl bg-black/10 p-3 ring-1 ring-white/10 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-white/10">
             <div className="sm:px-3">
               <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
-                Optimization goal
+                {isCreate ? "Cooking goal" : "Optimization goal"}
               </dt>
               <dd className="mt-0.5 text-sm font-semibold text-white">
                 {result.goalLabel}
@@ -206,14 +267,6 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
                     : "Complete"}
               </dd>
             </div>
-            <div className="sm:px-3">
-              <dt className="text-[10px] font-bold uppercase tracking-wider text-sage-200/80">
-                Sections
-              </dt>
-              <dd className="mt-0.5 text-sm font-semibold text-white">
-                5 analysis blocks
-              </dd>
-            </div>
           </dl>
         </div>
       </div>
@@ -224,7 +277,7 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
           <section className="report-section">
             <SectionHeading
               number={SECTION_HEADINGS[0].number}
-              title={SECTION_HEADINGS[0].title}
+              title={ingredientsTitle}
               icon={SECTION_HEADINGS[0].icon}
             />
             <ul className="mt-4 divide-y divide-sage-100 rounded-xl border border-sage-100/80 bg-sage-50/30">
@@ -249,7 +302,7 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
           <section className="report-section">
             <SectionHeading
               number={SECTION_HEADINGS[1].number}
-              title={SECTION_HEADINGS[1].title}
+              title={methodTitle}
               icon={SECTION_HEADINGS[1].icon}
             />
             <ol className="mt-4 space-y-2">
@@ -274,6 +327,7 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
         </div>
 
         {/* Substitutions */}
+        {hasSubstitutions && (
         <section className="report-section mt-4 sm:mt-5">
           <SectionHeading
             number={SECTION_HEADINGS[2].number}
@@ -320,6 +374,37 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
             ))}
           </div>
         </section>
+        )}
+
+        {result.missingOptionalIngredients &&
+          result.missingOptionalIngredients.length > 0 && (
+            <section className="report-section mt-4 sm:mt-5 border-amber-200/50 bg-gradient-to-br from-amber-50/30 to-white">
+              <SectionHeading
+                number="03b"
+                title="Suggested Optional Ingredients"
+                icon="swap"
+              />
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {result.missingOptionalIngredients.map((item, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-amber-100/90 bg-white p-3.5 sm:p-4"
+                  >
+                    <p className="report-section-label">Optional item {i + 1}</p>
+                    <p className="mt-2 text-sm font-semibold text-sage-900">
+                      {item.ingredient}
+                    </p>
+                    <p className="report-divider mt-3 pt-3 text-sm leading-relaxed text-sage-600">
+                      <span className="font-semibold text-sage-700">
+                        Substitute:{" "}
+                      </span>
+                      {item.substitute}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
         <div className="mt-4 grid gap-4 sm:mt-5 lg:grid-cols-2 lg:gap-5">
           {/* Food Science Notes */}
@@ -372,37 +457,55 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
           </section>
         </div>
 
-        {result.originalRecipeReference && (
+        {(result.originalRecipeReference || result.restrictionsReference) && (
           <section className="report-divider mt-4 pt-4 sm:mt-5 sm:pt-5">
             <p className="report-section-label mb-2">Appendix</p>
-            <button
-              type="button"
-              onClick={() => setShowOriginal((v) => !v)}
-              className="flex w-full items-center justify-between gap-4 rounded-xl border border-sage-200/90 bg-white px-3.5 py-3 text-left shadow-sm transition-all hover:border-sage-300 hover:bg-sage-50/50 active:scale-[0.995] sm:px-4 sm:py-3.5"
-              aria-expanded={showOriginal}
-            >
-              <span className="text-sm font-semibold text-sage-800">
-                Original recipe reference
-              </span>
-              <svg
-                className={`h-5 w-5 shrink-0 text-sage-500 transition-transform duration-200 ${
-                  showOriginal ? "rotate-180" : ""
-                }`}
-                width="20"
-                height="20"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-                aria-hidden
+            {result.originalRecipeReference && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowOriginal((v) => !v)}
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-sage-200/90 bg-white px-3.5 py-3 text-left shadow-sm transition-all hover:border-sage-300 hover:bg-sage-50/50 active:scale-[0.995] sm:px-4 sm:py-3.5"
+                  aria-expanded={showOriginal}
+                >
+                  <span className="text-sm font-semibold text-sage-800">
+                    {isCreate
+                      ? "Available ingredients reference"
+                      : "Original recipe reference"}
+                  </span>
+                  <svg
+                    className={`h-5 w-5 shrink-0 text-sage-500 transition-transform duration-200 ${
+                      showOriginal ? "rotate-180" : ""
+                    }`}
+                    width="20"
+                    height="20"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    aria-hidden
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showOriginal && (
+                  <div className="mt-2.5 rounded-xl border border-sage-200/90 bg-sage-50/60 p-3.5 sm:p-4">
+                    <p className="text-sm leading-relaxed text-sage-600 whitespace-pre-wrap">
+                      {result.originalRecipeReference}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+            {result.restrictionsReference && (
+              <div
+                className={`rounded-xl border border-sage-200/90 bg-sage-50/60 p-3.5 sm:p-4 ${result.originalRecipeReference ? "mt-2.5" : ""}`}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {showOriginal && (
-              <div className="mt-2.5 rounded-xl border border-sage-200/90 bg-sage-50/60 p-3.5 sm:p-4">
-                <p className="text-sm leading-relaxed text-sage-600 whitespace-pre-wrap">
-                  {result.originalRecipeReference}
+                <p className="text-[10px] font-bold uppercase tracking-wider text-sage-400">
+                  Dietary restrictions
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-sage-600 whitespace-pre-wrap">
+                  {result.restrictionsReference}
                 </p>
               </div>
             )}

@@ -5,8 +5,10 @@ import { ConstraintsPanel } from "@/components/ConstraintsPanel";
 import { FormulationOutput } from "@/components/FormulationOutput";
 import { GeneratingLoader } from "@/components/GeneratingLoader";
 import {
+  generatePlaceholderCreateFromIngredients,
   generatePlaceholderFormulation,
   OPTIMIZATION_GOALS,
+  type AppMode,
   type FormulationResult,
   type OptimizationGoal,
 } from "@/lib/formulation";
@@ -19,11 +21,16 @@ import {
   parseJsonResponse,
   parseReformulateApiResponse,
 } from "@/lib/reformulate-response";
-import { SAMPLE_RECIPES } from "@/lib/samples";
+import { PANTRY_STAPLES, SAMPLE_RECIPES } from "@/lib/samples";
 
 export default function Home() {
+  const [appMode, setAppMode] = useState<AppMode>("reformulate");
   const [recipe, setRecipe] = useState("");
+  const [ingredients, setIngredients] = useState("");
+  const [restrictions, setRestrictions] = useState("");
   const [goal, setGoal] = useState<OptimizationGoal>("allergen-free");
+  const [createGoal, setCreateGoal] = useState<OptimizationGoal | "">("");
+  const [useOnlyMyIngredients, setUseOnlyMyIngredients] = useState(false);
   const [output, setOutput] = useState<FormulationResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSampleMenu, setShowSampleMenu] = useState(false);
@@ -56,7 +63,20 @@ export default function Home() {
   }, [showSampleMenu]);
 
   const handleGenerate = async () => {
-    if (!recipe.trim()) {
+    const isCreate = appMode === "create-from-ingredients";
+    const trimmedRecipe = recipe.trim();
+    const trimmedIngredients = ingredients.trim();
+    const trimmedRestrictions = restrictions.trim();
+
+    if (isCreate) {
+      if (!trimmedIngredients) {
+        stopGenerating();
+        setInputError("Please list the ingredients you have on hand.");
+        setOutput(null);
+        setApiNotice(null);
+        return;
+      }
+    } else if (!trimmedRecipe) {
       stopGenerating();
       setInputError("Please paste a recipe first.");
       setOutput(null);
@@ -69,7 +89,6 @@ export default function Home() {
     setIsGenerating(true);
     setOutput(null);
 
-    const trimmedRecipe = recipe.trim();
     userCancelledRef.current = false;
     generateAbortRef.current?.abort();
 
@@ -77,23 +96,48 @@ export default function Home() {
     generateAbortRef.current = controller;
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
+    const reference = isCreate ? trimmedIngredients : trimmedRecipe;
+    const activeGoal = isCreate ? createGoal || null : goal;
+
+    const requestBody = isCreate
+      ? {
+          mode: "create-from-ingredients" as const,
+          ingredients: trimmedIngredients,
+          restrictions: trimmedRestrictions,
+          useOnlyMyIngredients,
+          ...(createGoal ? { goal: createGoal } : {}),
+        }
+      : { recipe: trimmedRecipe, goal };
+
+    const fallbackResult = (): FormulationResult =>
+      isCreate
+        ? generatePlaceholderCreateFromIngredients(
+            trimmedIngredients,
+            trimmedRestrictions,
+            activeGoal,
+            useOnlyMyIngredients
+          )
+        : {
+            ...generatePlaceholderFormulation(trimmedRecipe, goal),
+            source: "fallback",
+          };
+
     try {
       const response = await fetch("/api/reformulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipe: trimmedRecipe, goal }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
 
       const payload = await parseJsonResponse(response);
 
       if (!payload) {
-        setOutput({
-          ...generatePlaceholderFormulation(trimmedRecipe, goal),
-          source: "fallback",
-        });
+        setOutput(fallbackResult());
         setApiNotice(
-          "Could not read the reformulation response. Showing placeholder formulation."
+          isCreate
+            ? "Could not read the recipe response. Showing placeholder recipe."
+            : "Could not read the reformulation response. Showing placeholder formulation."
         );
         return;
       }
@@ -102,7 +146,14 @@ export default function Home() {
         const data = parseReformulateApiResponse(payload);
         if (data) {
           setOutput(
-            apiResponseToFormulationResult(data, trimmedRecipe, goal, "openai")
+            apiResponseToFormulationResult(
+              data,
+              reference,
+              activeGoal,
+              "openai",
+              appMode,
+              isCreate ? trimmedRestrictions || null : null
+            )
           );
           setApiNotice(null);
           return;
@@ -113,11 +164,20 @@ export default function Home() {
         const data = parseReformulateApiResponse(payload);
         if (data) {
           setOutput(
-            apiResponseToFormulationResult(data, trimmedRecipe, goal, "fallback")
+            apiResponseToFormulationResult(
+              data,
+              reference,
+              activeGoal,
+              "fallback",
+              appMode,
+              isCreate ? trimmedRestrictions || null : null
+            )
           );
           setApiNotice(
             getPayloadError(payload) ??
-              "AI reformulation unavailable. Showing placeholder formulation."
+              (isCreate
+                ? "AI recipe generation unavailable. Showing placeholder recipe."
+                : "AI reformulation unavailable. Showing placeholder formulation.")
           );
           return;
         }
@@ -130,14 +190,13 @@ export default function Home() {
           ? (payload as { error: string }).error
           : null;
 
-      setOutput({
-        ...generatePlaceholderFormulation(trimmedRecipe, goal),
-        source: "fallback",
-      });
+      setOutput(fallbackResult());
       setApiNotice(
         apiError
           ? friendlyReformulateError(apiError)
-          : "Could not reach the reformulation service. Showing placeholder formulation."
+          : isCreate
+            ? "Could not reach the recipe service. Showing placeholder recipe."
+            : "Could not reach the reformulation service. Showing placeholder formulation."
       );
     } catch (err) {
       if (userCancelledRef.current) {
@@ -145,22 +204,20 @@ export default function Home() {
       }
 
       if (err instanceof DOMException && err.name === "AbortError") {
-        setOutput({
-          ...generatePlaceholderFormulation(trimmedRecipe, goal),
-          source: "fallback",
-        });
+        setOutput(fallbackResult());
         setApiNotice(
-          "The reformulation request timed out. Showing placeholder formulation."
+          isCreate
+            ? "The recipe request timed out. Showing placeholder recipe."
+            : "The reformulation request timed out. Showing placeholder formulation."
         );
         return;
       }
 
-      setOutput({
-        ...generatePlaceholderFormulation(trimmedRecipe, goal),
-        source: "fallback",
-      });
+      setOutput(fallbackResult());
       setApiNotice(
-        "Could not reach the reformulation service. Showing placeholder formulation."
+        isCreate
+          ? "Could not reach the recipe service. Showing placeholder recipe."
+          : "Could not reach the reformulation service. Showing placeholder formulation."
       );
     } finally {
       clearTimeout(timeoutId);
@@ -179,10 +236,14 @@ export default function Home() {
   const handleClear = () => {
     stopGenerating();
     setRecipe("");
+    setIngredients("");
+    setRestrictions("");
     setOutput(null);
     setInputError(null);
     setApiNotice(null);
     setGoal("allergen-free");
+    setCreateGoal("");
+    setUseOnlyMyIngredients(false);
     setShowSampleMenu(false);
   };
 
@@ -194,7 +255,64 @@ export default function Home() {
     setShowSampleMenu(false);
   };
 
-  const hasInput = recipe.trim().length > 0 || output !== null;
+  const ingredientLines = ingredients
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const isStapleSelected = (staple: string) =>
+    ingredientLines.some(
+      (line) => line.toLowerCase() === staple.toLowerCase()
+    );
+
+  const togglePantryStaple = (staple: string) => {
+    const lines = [...ingredientLines];
+    const index = lines.findIndex(
+      (line) => line.toLowerCase() === staple.toLowerCase()
+    );
+
+    if (index >= 0) {
+      lines.splice(index, 1);
+    } else {
+      lines.push(staple);
+    }
+
+    const next = lines.join("\n");
+    setIngredients(next);
+    setOutput(null);
+    if (next.trim()) {
+      setInputError(null);
+    } else {
+      setInputError("Please list the ingredients you have on hand.");
+    }
+    setApiNotice(null);
+  };
+
+  const switchMode = (mode: AppMode) => {
+    stopGenerating();
+    setAppMode(mode);
+    setOutput(null);
+    setInputError(null);
+    setApiNotice(null);
+  };
+
+  const panelGoal =
+    appMode === "reformulate" ? goal : createGoal || null;
+
+  const handlePanelGoalChange = (value: OptimizationGoal) => {
+    if (appMode === "reformulate") {
+      setGoal(value);
+    } else {
+      setCreateGoal(value);
+    }
+  };
+
+  const hasInput =
+    appMode === "reformulate"
+      ? recipe.trim().length > 0 || output !== null
+      : ingredients.trim().length > 0 ||
+        restrictions.trim().length > 0 ||
+        output !== null;
 
   return (
     <div className="app-shell">
@@ -268,9 +386,9 @@ export default function Home() {
             <span className="hero-gradient-text">smart constraints</span>
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-balance text-sm leading-relaxed text-sage-600 sm:mt-4 sm:text-base lg:text-lg">
-            Paste a recipe, choose an optimization goal, and generate an
-            OpenAI-powered reformulation—tailored for allergen-free, vegan,
-            sugar reduction, cost, protein, or calorie targets.
+            Reformulate an existing recipe or build a new one from ingredients
+            on hand—powered by OpenAI for allergen-free, vegan, sugar
+            reduction, cost, protein, and calorie goals.
           </p>
           <div className="mx-auto mt-4 flex max-w-3xl flex-wrap items-center justify-center gap-1.5 sm:mt-5 sm:gap-2">
             {OPTIMIZATION_GOALS.map((g) => (
@@ -284,6 +402,33 @@ export default function Home() {
         <div className="grid gap-5 sm:gap-6 lg:grid-cols-5 lg:gap-8">
           <div className="space-y-5 sm:space-y-6 lg:col-span-3">
             <section className="card-panel-interactive p-4 sm:p-6 lg:p-7">
+              <div
+                className="mode-tabs mb-5 sm:mb-6"
+                role="tablist"
+                aria-label="Formulation mode"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={appMode === "reformulate"}
+                  className={`mode-tab ${appMode === "reformulate" ? "mode-tab-active" : ""}`}
+                  onClick={() => switchMode("reformulate")}
+                >
+                  Reformulate Recipe
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={appMode === "create-from-ingredients"}
+                  className={`mode-tab ${appMode === "create-from-ingredients" ? "mode-tab-active" : ""}`}
+                  onClick={() => switchMode("create-from-ingredients")}
+                >
+                  Create From Ingredients
+                </button>
+              </div>
+
+              {appMode === "reformulate" ? (
+                <>
               <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="section-eyebrow">Step 1</p>
@@ -396,22 +541,152 @@ Blueberry Muffins
 ½ cup butter…"
                 className="input-textarea"
               />
+                </>
+              ) : (
+                <>
+                  <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="section-eyebrow">Step 1</p>
+                      <h2 className="section-title mt-1">Ingredients on hand</h2>
+                      <p className="section-subtitle">
+                        List ingredient names only—no measurements needed
+                      </p>
+                    </div>
+                    {hasInput && (
+                      <button
+                        type="button"
+                        onClick={handleClear}
+                        className="btn-danger-ghost shrink-0"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mb-4">
+                    <p className="field-label mb-2.5">Kitchen staples</p>
+                    <div className="flex flex-wrap gap-2">
+                      {PANTRY_STAPLES.map((staple) => {
+                        const selected = isStapleSelected(staple);
+                        return (
+                          <button
+                            key={staple}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => togglePantryStaple(staple)}
+                            className={`pantry-staple ${selected ? "pantry-staple-active" : ""}`}
+                          >
+                            {staple}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-sage-500">
+                      Tap a staple to add it to your list. Tap again to remove.
+                    </p>
+                  </div>
+
+                  <textarea
+                    id="ingredients"
+                    rows={7}
+                    value={ingredients}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setIngredients(value);
+                      if (!value.trim()) {
+                        stopGenerating();
+                        setOutput(null);
+                        setInputError(
+                          "Please list the ingredients you have on hand."
+                        );
+                        setApiNotice(null);
+                      } else if (inputError) {
+                        setInputError(null);
+                      }
+                      if (apiNotice) setApiNotice(null);
+                    }}
+                    placeholder="List ingredients you have on hand…
+
+Example:
+Eggs
+Flour
+Butter
+Onions
+Garlic
+Rice"
+                    className="input-textarea"
+                  />
+
+                  <div className="mt-4 sm:mt-5">
+                    <label htmlFor="restrictions" className="field-label">
+                      Dietary restrictions or allergies
+                    </label>
+                    <textarea
+                      id="restrictions"
+                      rows={3}
+                      value={restrictions}
+                      onChange={(e) => {
+                        setRestrictions(e.target.value);
+                        if (apiNotice) setApiNotice(null);
+                      }}
+                      placeholder="e.g. nut-free, dairy-free, gluten-free, no shellfish…"
+                      className="input-textarea min-h-[88px]"
+                    />
+                  </div>
+
+                  <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-sage-200/90 bg-sage-50/40 px-4 py-3.5 transition-colors hover:border-sage-300 hover:bg-sage-50/70">
+                    <input
+                      type="checkbox"
+                      checked={useOnlyMyIngredients}
+                      onChange={(e) => {
+                        setUseOnlyMyIngredients(e.target.checked);
+                        if (apiNotice) setApiNotice(null);
+                      }}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-sage-300 text-sage-600 focus:ring-sage-500"
+                    />
+                    <span>
+                      <span className="block text-sm font-bold text-sage-900">
+                        Use only my ingredients
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-relaxed text-sage-600">
+                        Strict mode: the recipe will not suggest optional
+                        add-ons outside your list (water allowed for cooking).
+                      </span>
+                    </span>
+                  </label>
+                </>
+              )}
 
               <div className="mt-5 space-y-4 border-t border-sage-100 pt-5 sm:mt-6 sm:space-y-5 sm:pt-6">
                 <div>
                   <p className="section-eyebrow mb-3">Step 2</p>
-                  <label htmlFor="goal" className="field-label">
-                    Optimization goal
+                  <label
+                    htmlFor={appMode === "reformulate" ? "goal" : "create-goal"}
+                    className="field-label"
+                  >
+                    {appMode === "reformulate"
+                      ? "Optimization goal"
+                      : "Cooking goal (optional)"}
                   </label>
                   <div className="relative">
                     <select
-                      id="goal"
-                      value={goal}
-                      onChange={(e) =>
-                        setGoal(e.target.value as OptimizationGoal)
-                      }
+                      id={appMode === "reformulate" ? "goal" : "create-goal"}
+                      value={appMode === "reformulate" ? goal : createGoal}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (appMode === "reformulate") {
+                          setGoal(value as OptimizationGoal);
+                        } else {
+                          setCreateGoal(
+                            value ? (value as OptimizationGoal) : ""
+                          );
+                        }
+                      }}
                       className="input-select"
                     >
+                      {appMode === "create-from-ingredients" && (
+                        <option value="">No specific goal (balanced recipe)</option>
+                      )}
                       {OPTIMIZATION_GOALS.map((g) => (
                         <option key={g.value} value={g.value}>
                           {g.label}
@@ -491,7 +766,9 @@ Blueberry Muffins
                           d="M13 10V3L4 14h7v7l9-11h-7z"
                         />
                       </svg>
-                      Generate formulation
+                      {appMode === "create-from-ingredients"
+                        ? "Generate recipe"
+                        : "Generate formulation"}
                     </>
                   )}
                   </button>
@@ -536,8 +813,9 @@ Blueberry Muffins
                     Your formulation will appear here
                   </p>
                   <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-sage-500">
-                    Add a recipe or load a sample, then generate your
-                    OpenAI-powered reformulation.
+                    {appMode === "create-from-ingredients"
+                      ? "List your ingredients and optional restrictions, then generate a complete recipe."
+                      : "Add a recipe or load a sample, then generate your OpenAI-powered reformulation."}
                   </p>
                 </div>
               )}
@@ -546,7 +824,11 @@ Blueberry Muffins
 
           <div className="lg:col-span-2">
             <div className="lg:sticky lg:top-[4.75rem]">
-              <ConstraintsPanel goal={goal} onGoalChange={setGoal} />
+              <ConstraintsPanel
+                goal={panelGoal}
+                onGoalChange={handlePanelGoalChange}
+                mode={appMode}
+              />
             </div>
           </div>
         </div>
@@ -555,8 +837,8 @@ Blueberry Muffins
       <footer className="mt-6 border-t border-sage-200/80 bg-white/70 py-6 backdrop-blur-sm sm:mt-8 sm:py-8">
         <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
           <p className="text-sm font-medium leading-relaxed text-sage-600">
-            OpenAI-powered recipe reformulation for dietary, nutrition, allergen,
-            cost, protein, and calorie goals.
+            OpenAI-powered recipe reformulation and pantry-based recipe creation
+            for dietary, nutrition, allergen, cost, protein, and calorie goals.
           </p>
           <p className="mt-2 text-xs text-sage-400">
             Smart Food Formulator · AI Formulation Tool

@@ -1,15 +1,15 @@
+import { generatePlaceholderCreateFromIngredients } from "./create-from-ingredients";
 import { generatePlaceholderFormulation } from "./formulation";
+import { finalizeFoodScienceNotes } from "./food-science-notes";
 import type {
+  AppMode,
   FormulationResult,
+  MissingOptionalIngredient,
   OptimizationGoal,
+  RecipeMetadata,
   Substitution,
 } from "./formulation-types";
-import {
-  ALLERGEN_FREE_DISCLAIMER,
-  HIGH_PROTEIN_RATIONALE_NOTE,
-  LOW_CALORIE_RATIONALE_NOTE,
-  OPTIMIZATION_GOALS,
-} from "./formulation-types";
+import { DEFAULT_RECIPE_METADATA, OPTIMIZATION_GOALS } from "./formulation-types";
 
 export interface ReformulateApiResponse {
   title: string;
@@ -18,6 +18,11 @@ export interface ReformulateApiResponse {
   substitutions: Substitution[];
   foodScienceNotes: string[];
   expectedResult: string;
+  missingOptionalIngredients?: MissingOptionalIngredient[];
+  servings?: string;
+  prepTime?: string;
+  cookTime?: string;
+  difficulty?: string;
 }
 
 export interface ReformulateApiPayload extends ReformulateApiResponse {
@@ -46,6 +51,41 @@ function ensureSubstitutions(value: unknown): Substitution[] {
       replacement: item.replacement,
       rationale: item.rationale,
     }));
+}
+
+function ensureMissingOptionalIngredients(
+  value: unknown
+): MissingOptionalIngredient[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (item): item is MissingOptionalIngredient =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as MissingOptionalIngredient).ingredient === "string" &&
+        typeof (item as MissingOptionalIngredient).substitute === "string"
+    )
+    .map((item) => ({
+      ingredient: item.ingredient,
+      substitute: item.substitute,
+    }));
+}
+
+function parseRecipeMetadata(data: Record<string, unknown>): RecipeMetadata {
+  const pick = (keys: string[], fallback: string) => {
+    for (const key of keys) {
+      const value = data[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+    return fallback;
+  };
+
+  return {
+    servings: pick(["servings", "servingSize", "serving_size"], DEFAULT_RECIPE_METADATA.servings),
+    prepTime: pick(["prepTime", "prep_time", "preparationTime"], DEFAULT_RECIPE_METADATA.prepTime),
+    cookTime: pick(["cookTime", "cook_time", "cookingTime"], DEFAULT_RECIPE_METADATA.cookTime),
+    difficulty: pick(["difficulty", "skillLevel", "skill_level"], DEFAULT_RECIPE_METADATA.difficulty),
+  };
 }
 
 export function parseReformulateApiResponse(
@@ -78,6 +118,9 @@ export function parseReformulateApiResponse(
       : typeof data.expected_result === "string"
         ? data.expected_result
         : "";
+  const missingOptionalIngredients = ensureMissingOptionalIngredients(
+    data.missingOptionalIngredients ?? data.missing_optional_ingredients
+  );
 
   if (ingredients.length === 0 && method.length === 0) {
     return null;
@@ -90,6 +133,10 @@ export function parseReformulateApiResponse(
     substitutions,
     foodScienceNotes,
     expectedResult,
+    ...parseRecipeMetadata(data),
+    ...(missingOptionalIngredients.length > 0
+      ? { missingOptionalIngredients }
+      : {}),
   };
 }
 
@@ -124,18 +171,18 @@ export function getPayloadError(value: unknown): string | null {
 export function friendlyReformulateError(raw: string): string {
   const lower = raw.toLowerCase();
   if (lower.includes("quota") || lower.includes("billing")) {
-    return "AI reformulation isn't available right now (API quota exceeded). Showing placeholder formulation.";
+    return "AI formulation isn't available right now (API quota exceeded). Showing placeholder formulation.";
   }
   if (lower.includes("invalid_api_key") || lower.includes("incorrect api key")) {
-    return "AI reformulation isn't available (invalid API key). Showing placeholder formulation.";
+    return "AI formulation isn't available (invalid API key). Showing placeholder formulation.";
   }
   if (lower.includes("rate limit")) {
-    return "AI reformulation is busy right now. Showing placeholder formulation.";
+    return "AI formulation is busy right now. Showing placeholder formulation.";
   }
   if (lower.includes("not configured")) {
     return raw;
   }
-  return "AI reformulation couldn't be completed. Showing placeholder formulation.";
+  return "AI formulation couldn't be completed. Showing placeholder formulation.";
 }
 
 export async function parseJsonResponse(
@@ -151,6 +198,7 @@ export async function parseJsonResponse(
 export function formulationResultToApiResponse(
   result: FormulationResult
 ): ReformulateApiResponse {
+  const meta = result.recipeMetadata ?? DEFAULT_RECIPE_METADATA;
   return {
     title: result.recipeName,
     ingredients: result.reformulatedIngredients,
@@ -158,6 +206,13 @@ export function formulationResultToApiResponse(
     substitutions: result.keySubstitutions,
     foodScienceNotes: result.foodScienceNotes,
     expectedResult: result.expectedResult,
+    servings: meta.servings,
+    prepTime: meta.prepTime,
+    cookTime: meta.cookTime,
+    difficulty: meta.difficulty,
+    ...(result.missingOptionalIngredients?.length
+      ? { missingOptionalIngredients: result.missingOptionalIngredients }
+      : {}),
   };
 }
 
@@ -167,6 +222,22 @@ export function generateFallbackApiResponse(
 ): ReformulateApiResponse {
   return formulationResultToApiResponse(
     generatePlaceholderFormulation(recipe, goal)
+  );
+}
+
+export function generateFallbackCreateApiResponse(
+  ingredients: string,
+  restrictions: string,
+  goal: OptimizationGoal | null,
+  useOnlyMyIngredients = false
+): ReformulateApiResponse {
+  return formulationResultToApiResponse(
+    generatePlaceholderCreateFromIngredients(
+      ingredients,
+      restrictions,
+      goal,
+      useOnlyMyIngredients
+    )
   );
 }
 
@@ -201,54 +272,44 @@ function sanitizeAllergenFreeResponse(
     })),
     foodScienceNotes: data.foodScienceNotes.map(sanitizeAllergenFreeLine),
     expectedResult: sanitizeAllergenFreeLine(data.expectedResult),
+    missingOptionalIngredients: data.missingOptionalIngredients?.map((item) => ({
+      ingredient: sanitizeAllergenFreeLine(item.ingredient),
+      substitute: sanitizeAllergenFreeLine(item.substitute),
+    })),
   };
 }
 
-function withAllergenFreeDisclaimer(notes: string[]): string[] {
-  if (notes.some((note) => note.includes(ALLERGEN_FREE_DISCLAIMER.slice(0, 40)))) {
-    return notes;
-  }
-  return [ALLERGEN_FREE_DISCLAIMER, ...notes];
+function goalLabelFor(goal: OptimizationGoal | null): string {
+  if (!goal) return "Balanced recipe";
+  return OPTIMIZATION_GOALS.find((g) => g.value === goal)?.label ?? goal;
 }
 
-function withHighProteinRationale(notes: string[]): string[] {
-  if (
-    notes.some((note) =>
-      note.toLowerCase().includes("protein rationale")
-    )
-  ) {
-    return notes;
-  }
-  return [HIGH_PROTEIN_RATIONALE_NOTE, ...notes];
-}
-
-function withLowCalorieRationale(notes: string[]): string[] {
-  if (notes.some((note) => note.toLowerCase().includes("calorie rationale"))) {
-    return notes;
-  }
-  return [LOW_CALORIE_RATIONALE_NOTE, ...notes];
+function recipeMetadataFromResponse(data: ReformulateApiResponse): RecipeMetadata {
+  return {
+    servings: data.servings ?? DEFAULT_RECIPE_METADATA.servings,
+    prepTime: data.prepTime ?? DEFAULT_RECIPE_METADATA.prepTime,
+    cookTime: data.cookTime ?? DEFAULT_RECIPE_METADATA.cookTime,
+    difficulty: data.difficulty ?? DEFAULT_RECIPE_METADATA.difficulty,
+  };
 }
 
 export function apiResponseToFormulationResult(
   data: ReformulateApiResponse,
-  originalRecipe: string,
-  goal: OptimizationGoal,
-  source: "openai" | "fallback" = "openai"
+  originalReference: string,
+  goal: OptimizationGoal | null,
+  source: "openai" | "fallback" = "openai",
+  mode: AppMode = "reformulate",
+  restrictionsReference: string | null = null
 ): FormulationResult {
-  const goalLabel =
-    OPTIMIZATION_GOALS.find((g) => g.value === goal)?.label ?? goal;
+  const goalLabel = goalLabelFor(goal);
 
   const normalized =
     goal === "allergen-free" ? sanitizeAllergenFreeResponse(data) : data;
 
-  const foodScienceNotes =
-    goal === "allergen-free"
-      ? withAllergenFreeDisclaimer(normalized.foodScienceNotes)
-      : goal === "high-protein"
-        ? withHighProteinRationale(normalized.foodScienceNotes)
-        : goal === "low-calorie"
-          ? withLowCalorieRationale(normalized.foodScienceNotes)
-          : normalized.foodScienceNotes;
+  const foodScienceNotes = finalizeFoodScienceNotes(
+    normalized.foodScienceNotes,
+    goal
+  );
 
   return {
     recipeName: normalized.title || "Your Recipe",
@@ -258,7 +319,11 @@ export function apiResponseToFormulationResult(
     keySubstitutions: normalized.substitutions,
     foodScienceNotes,
     expectedResult: normalized.expectedResult,
-    originalRecipeReference: originalRecipe,
+    originalRecipeReference: originalReference || null,
+    restrictionsReference,
+    missingOptionalIngredients: normalized.missingOptionalIngredients,
+    recipeMetadata: recipeMetadataFromResponse(normalized),
+    mode,
     source,
   };
 }

@@ -1,16 +1,35 @@
 import {
   CONSTRAINT_INFO,
   OPTIMIZATION_GOALS,
+  type AppMode,
   type OptimizationGoal,
 } from "@/lib/formulation";
 
 interface ConstraintsPanelProps {
-  goal: OptimizationGoal;
+  goal: OptimizationGoal | null;
   onGoalChange: (goal: OptimizationGoal) => void;
+  mode: AppMode;
 }
 
-export function ConstraintsPanel({ goal, onGoalChange }: ConstraintsPanelProps) {
-  const constraint = CONSTRAINT_INFO[goal];
+const CREATE_GENERAL_GUIDANCE = {
+  title: "Pantry-first recipe design",
+  description:
+    "Recipes are built from ingredients you list, with optional goals and strict respect for dietary restrictions.",
+  principles: [
+    "Prioritize ingredients already on hand; only assume basic staples like salt, pepper, and water unless restricted.",
+    "List missing optional items with practical substitutes when a pantry gap would improve the dish.",
+    "Match cooking method to what you have—bakes, skillets, one-pot meals, or bowls.",
+    "When a cooking goal is selected, apply the same food-science principles as recipe reformulation.",
+  ],
+};
+
+export function ConstraintsPanel({
+  goal,
+  onGoalChange,
+  mode,
+}: ConstraintsPanelProps) {
+  const constraint = goal ? CONSTRAINT_INFO[goal] : CREATE_GENERAL_GUIDANCE;
+  const isCreate = mode === "create-from-ingredients";
 
   return (
     <section
@@ -21,8 +40,9 @@ export function ConstraintsPanel({ goal, onGoalChange }: ConstraintsPanelProps) 
         <p className="section-eyebrow">Guidance</p>
         <h2 className="section-title mt-1.5">Formulation constraints</h2>
         <p className="section-subtitle">
-          Each goal applies evidence-based food science principles. Select a
-          constraint to preview how reformulation will be guided.
+          {isCreate
+            ? "Optional goals and restrictions guide how recipes are composed from your pantry."
+            : "Each goal applies evidence-based food science principles. Select a constraint to preview how reformulation will be guided."}
         </p>
       </div>
 
@@ -45,7 +65,7 @@ export function ConstraintsPanel({ goal, onGoalChange }: ConstraintsPanelProps) 
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-sage-100 bg-gradient-to-br from-sage-50/90 via-white to-sage-50/40 p-4 shadow-inset sm:mt-6 sm:p-5">
         <div className="mb-4 inline-flex rounded-full bg-sage-600/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-sage-700">
-          Active constraint
+          {goal ? "Active constraint" : "Default approach"}
         </div>
         <h3 className="font-display text-xl tracking-tight text-sage-900">
           {constraint.title}

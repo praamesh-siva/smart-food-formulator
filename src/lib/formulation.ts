@@ -11,15 +11,19 @@ import {
   parseRecipe,
 } from "./recipe-parser";
 import type { FormulationResult, OptimizationGoal } from "./formulation-types";
-import { ALLERGEN_FREE_DISCLAIMER, HIGH_PROTEIN_RATIONALE_NOTE, OPTIMIZATION_GOALS } from "./formulation-types";
+import { DEFAULT_RECIPE_METADATA, OPTIMIZATION_GOALS } from "./formulation-types";
+import { finalizeFoodScienceNotes } from "./food-science-notes";
 
 export type {
+  AppMode,
   ConstraintInfo,
   FormulationResult,
+  MissingOptionalIngredient,
   OptimizationGoal,
   Substitution,
 } from "./formulation-types";
 export { CONSTRAINT_INFO, OPTIMIZATION_GOALS, ALLERGEN_FREE_DISCLAIMER } from "./formulation-types";
+export { generatePlaceholderCreateFromIngredients } from "./create-from-ingredients";
 
 export function generatePlaceholderFormulation(
   originalRecipe: string,
@@ -46,11 +50,8 @@ export function generatePlaceholderFormulation(
 
   const { ingredients, substitutions } = transformIngredients(parsed, goal);
   const updatedMethod = generateMethod(parsed, goal);
-  const foodScienceNotes = withHighProteinRationale(
-    withAllergenFreeDisclaimer(
-      generateFoodScienceNotes(parsed, goal, substitutions),
-      goal
-    ),
+  const foodScienceNotes = finalizeFoodScienceNotes(
+    generateFoodScienceNotes(parsed, goal, substitutions),
     goal
   );
   const expectedResult = generateExpectedResult(parsed, goal);
@@ -64,27 +65,6 @@ export function generatePlaceholderFormulation(
     foodScienceNotes,
     expectedResult,
     originalRecipeReference,
+    recipeMetadata: { ...DEFAULT_RECIPE_METADATA },
   };
-}
-
-function withAllergenFreeDisclaimer(
-  notes: string[],
-  goal: OptimizationGoal
-): string[] {
-  if (goal !== "allergen-free") return notes;
-  if (notes.some((note) => note.includes(ALLERGEN_FREE_DISCLAIMER.slice(0, 40)))) {
-    return notes;
-  }
-  return [ALLERGEN_FREE_DISCLAIMER, ...notes];
-}
-
-function withHighProteinRationale(
-  notes: string[],
-  goal: OptimizationGoal
-): string[] {
-  if (goal !== "high-protein") return notes;
-  if (notes.some((note) => note.toLowerCase().includes("protein rationale"))) {
-    return notes;
-  }
-  return [HIGH_PROTEIN_RATIONALE_NOTE, ...notes];
 }
