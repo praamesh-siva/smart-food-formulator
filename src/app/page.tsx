@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AppChrome } from "@/components/AppChrome";
 import { ConstraintsPanel } from "@/components/ConstraintsPanel";
 import { FormulationOutput } from "@/components/FormulationOutput";
 import { GeneratingLoader } from "@/components/GeneratingLoader";
+import { useSavedRecipes } from "@/hooks/useSavedRecipes";
 import {
   generatePlaceholderCreateFromIngredients,
   generatePlaceholderFormulation,
@@ -36,7 +38,9 @@ export default function Home() {
   const [showSampleMenu, setShowSampleMenu] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [apiNotice, setApiNotice] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saved">("idle");
   const outputRef = useRef<HTMLElement>(null);
+  const { recipes: savedRecipes, saveRecipe } = useSavedRecipes();
   const sampleMenuRef = useRef<HTMLDivElement>(null);
   const generateAbortRef = useRef<AbortController | null>(null);
   const userCancelledRef = useRef(false);
@@ -61,6 +65,16 @@ export default function Home() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showSampleMenu]);
+
+  useEffect(() => {
+    setSaveState("idle");
+  }, [output]);
+
+  const handleSaveRecipe = () => {
+    if (!output) return;
+    saveRecipe(output);
+    setSaveState("saved");
+  };
 
   const handleGenerate = async () => {
     const isCreate = appMode === "create-from-ingredients";
@@ -315,63 +329,7 @@ export default function Home() {
         output !== null;
 
   return (
-    <div className="app-shell">
-      <div
-        className="pointer-events-none fixed inset-0 -z-10 bg-hero-mesh"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none fixed inset-0 -z-10 opacity-40"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, rgb(148 163 184 / 0.07) 1px, transparent 1px), linear-gradient(to bottom, rgb(148 163 184 / 0.07) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-        }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none fixed -left-24 top-32 -z-10 h-72 w-72 rounded-full bg-sage-300/20 blur-3xl"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none fixed -right-16 top-64 -z-10 h-80 w-80 rounded-full bg-emerald-200/25 blur-3xl"
-        aria-hidden
-      />
-
-      <header className="glass-header">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sage-600 to-sage-700 text-white shadow-glow">
-              <svg
-                className="h-5 w-5"
-                width="20"
-                height="20"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.377-1.067-3.61L5 14.5"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="text-[15px] font-bold tracking-tight text-sage-900">
-                Smart Food Formulator
-              </p>
-              <p className="text-xs font-medium text-sage-500 hidden sm:block">
-                Constraint-driven recipe reformulation
-              </p>
-            </div>
-          </div>
-          <span className="badge-accent">Powered by OpenAI</span>
-        </div>
-      </header>
-
+    <AppChrome activeNav="formulator" savedCount={savedRecipes.length}>
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-9 lg:py-11">
         <section className="mb-6 animate-fade-up text-center sm:mb-8">
           <div className="badge-pill mb-3 sm:mb-4">
@@ -788,7 +746,13 @@ Rice"
                 </p>
               )}
               {isGenerating && <GeneratingLoader />}
-              {!isGenerating && output && <FormulationOutput result={output} />}
+              {!isGenerating && output && (
+                <FormulationOutput
+                  result={output}
+                  onSave={handleSaveRecipe}
+                  saveState={saveState}
+                />
+              )}
               {!isGenerating && !output && (
                 <div className="empty-state">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sage-100 to-sage-200/80 text-sage-600 shadow-sm">
@@ -833,18 +797,6 @@ Rice"
           </div>
         </div>
       </main>
-
-      <footer className="mt-6 border-t border-sage-200/80 bg-white/70 py-6 backdrop-blur-sm sm:mt-8 sm:py-8">
-        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-          <p className="text-sm font-medium leading-relaxed text-sage-600">
-            OpenAI-powered recipe reformulation and pantry-based recipe creation
-            for dietary, nutrition, allergen, cost, protein, and calorie goals.
-          </p>
-          <p className="mt-2 text-xs text-sage-400">
-            Smart Food Formulator · AI Formulation Tool
-          </p>
-        </div>
-      </footer>
-    </div>
+    </AppChrome>
   );
 }

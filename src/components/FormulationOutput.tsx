@@ -5,6 +5,8 @@ import type { FormulationResult } from "@/lib/formulation";
 
 interface FormulationOutputProps {
   result: FormulationResult;
+  onSave?: () => void;
+  saveState?: "idle" | "saved";
 }
 
 const SECTION_HEADINGS = [
@@ -131,7 +133,11 @@ function formatFormulationForCopy(result: FormulationResult): string {
   return lines.join("\n");
 }
 
-export function FormulationOutput({ result }: FormulationOutputProps) {
+export function FormulationOutput({
+  result,
+  onSave,
+  saveState = "idle",
+}: FormulationOutputProps) {
   const isCreate = result.mode === "create-from-ingredients";
   const ingredientsTitle = isCreate ? "Recipe Ingredients" : "Reformulated Ingredients";
   const methodTitle = isCreate ? "Cooking Method" : "Updated Method";
@@ -180,11 +186,38 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
               </h2>
             </div>
             <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-              <button
-                type="button"
-                onClick={handleCopyOutput}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3.5 py-2 text-sm font-semibold text-white ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/25 active:scale-[0.98]"
-              >
+              <div className="flex flex-wrap items-center gap-2">
+                {onSave && (
+                  <button
+                    type="button"
+                    onClick={onSave}
+                    disabled={saveState === "saved"}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3.5 py-2 text-sm font-semibold text-white ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/25 active:scale-[0.98] disabled:cursor-default disabled:opacity-80"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      aria-hidden
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
+                      />
+                    </svg>
+                    {saveState === "saved" ? "Saved" : "Save recipe"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCopyOutput}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3.5 py-2 text-sm font-semibold text-white ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/25 active:scale-[0.98]"
+                >
                 <svg
                   className="h-4 w-4"
                   width="16"
@@ -203,6 +236,7 @@ export function FormulationOutput({ result }: FormulationOutputProps) {
                 </svg>
                 Copy report
               </button>
+              </div>
               {copied && (
                 <span className="text-xs font-semibold text-emerald-100" role="status">
                   Copied!
