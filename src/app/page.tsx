@@ -5,7 +5,13 @@ import { AppChrome } from "@/components/AppChrome";
 import { ConstraintsPanel } from "@/components/ConstraintsPanel";
 import { FormulationOutput } from "@/components/FormulationOutput";
 import { GeneratingLoader } from "@/components/GeneratingLoader";
+import { IngredientPhotoCapture } from "@/components/IngredientPhotoCapture";
+import { OptionalDetectedItems } from "@/components/OptionalDetectedItems";
 import { useSavedRecipes } from "@/hooks/useSavedRecipes";
+import {
+  mergeIngredientLines,
+  type DetectedIngredientsResponse,
+} from "@/lib/ingredient-detection";
 import {
   generatePlaceholderCreateFromIngredients,
   generatePlaceholderFormulation,
@@ -39,6 +45,11 @@ export default function Home() {
   const [inputError, setInputError] = useState<string | null>(null);
   const [apiNotice, setApiNotice] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saved">("idle");
+  const [detectNotice, setDetectNotice] = useState<string | null>(null);
+  const [detectError, setDetectError] = useState<string | null>(null);
+  const [optionalDetectedItems, setOptionalDetectedItems] = useState<string[]>(
+    []
+  );
   const outputRef = useRef<HTMLElement>(null);
   const { recipes: savedRecipes, saveRecipe } = useSavedRecipes();
   const sampleMenuRef = useRef<HTMLDivElement>(null);
@@ -258,6 +269,9 @@ export default function Home() {
     setGoal("allergen-free");
     setCreateGoal("");
     setUseOnlyMyIngredients(false);
+    setDetectNotice(null);
+    setDetectError(null);
+    setOptionalDetectedItems([]);
     setShowSampleMenu(false);
   };
 
@@ -308,6 +322,66 @@ export default function Home() {
     setOutput(null);
     setInputError(null);
     setApiNotice(null);
+    setDetectNotice(null);
+    setDetectError(null);
+    setOptionalDetectedItems([]);
+  };
+
+  const handleDetectedIngredients = (result: DetectedIngredientsResponse) => {
+    if (result.ingredients.length > 0) {
+      setIngredients((current) =>
+        mergeIngredientLines(current, result.ingredients)
+      );
+    }
+
+    setOptionalDetectedItems(result.optionalIngredients);
+    setOutput(null);
+    setInputError(null);
+    setDetectError(null);
+    setApiNotice(null);
+
+    const mainCount = result.ingredients.length;
+    const optionalCount = result.optionalIngredients.length;
+
+    if (mainCount > 0) {
+      setDetectNotice(
+        result.notes
+          ? `Added ${mainCount} main ingredient${mainCount === 1 ? "" : "s"} from your photo. ${optionalCount > 0 ? `${optionalCount} optional item${optionalCount === 1 ? "" : "s"} listed below.` : ""} ${result.notes}`.trim()
+          : `Added ${mainCount} main ingredient${mainCount === 1 ? "" : "s"} from your photo.${optionalCount > 0 ? ` ${optionalCount} optional item${optionalCount === 1 ? "" : "s"} listed below.` : ""}`
+      );
+    } else {
+      setDetectNotice(
+        result.notes
+          ? `No main ingredients were auto-added. Review ${optionalCount} optional item${optionalCount === 1 ? "" : "s"} below. ${result.notes}`
+          : `No main ingredients were auto-added. Review ${optionalCount} optional item${optionalCount === 1 ? "" : "s"} below and tap to add any you want.`
+      );
+    }
+  };
+
+  const handleAddOptionalDetectedItem = (item: string) => {
+    setIngredients((current) => mergeIngredientLines(current, [item]));
+    setOptionalDetectedItems((current) =>
+      current.filter((entry) => entry !== item)
+    );
+    setOutput(null);
+    setInputError(null);
+    setDetectNotice(`Added "${item}" to your ingredient list.`);
+    setDetectError(null);
+  };
+
+  const handleDismissOptionalDetectedItem = (item: string) => {
+    setOptionalDetectedItems((current) =>
+      current.filter((entry) => entry !== item)
+    );
+  };
+
+  const handleDetectError = (message: string) => {
+    if (!message) {
+      setDetectError(null);
+      return;
+    }
+    setDetectError(message);
+    setDetectNotice(null);
   };
 
   const panelGoal =
@@ -521,6 +595,33 @@ Blueberry Muffins
                     )}
                   </div>
 
+                  <IngredientPhotoCapture
+                    disabled={isGenerating}
+                    onDetected={handleDetectedIngredients}
+                    onError={handleDetectError}
+                  />
+
+                  {detectNotice && (
+                    <p
+                      className="mb-4 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-3 text-sm font-medium leading-relaxed text-emerald-800"
+                      role="status"
+                    >
+                      {detectNotice}
+                    </p>
+                  )}
+
+                  {detectError && (
+                    <p className="alert-notice mb-4" role="alert">
+                      {detectError}
+                    </p>
+                  )}
+
+                  <OptionalDetectedItems
+                    items={optionalDetectedItems}
+                    onAdd={handleAddOptionalDetectedItem}
+                    onDismiss={handleDismissOptionalDetectedItem}
+                  />
+
                   <div className="mb-4">
                     <p className="field-label mb-2.5">Kitchen staples</p>
                     <div className="flex flex-wrap gap-2">
@@ -562,6 +663,13 @@ Blueberry Muffins
                         setInputError(null);
                       }
                       if (apiNotice) setApiNotice(null);
+                      if (detectNotice || detectError) {
+                        setDetectNotice(null);
+                        setDetectError(null);
+                      }
+                      if (optionalDetectedItems.length > 0) {
+                        setOptionalDetectedItems([]);
+                      }
                     }}
                     placeholder="List ingredients you have on hand…
 
