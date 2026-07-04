@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CookMode } from "@/components/CookMode";
 import type { FormulationResult } from "@/lib/formulation";
 
 interface FormulationOutputProps {
@@ -145,7 +146,12 @@ export function FormulationOutput({
   const hasSubstitutions = result.keySubstitutions.length > 0;
   const [showOriginal, setShowOriginal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [cookModeActive, setCookModeActive] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setCookModeActive(false);
+  }, [result]);
 
   useEffect(() => {
     return () => {
@@ -165,6 +171,15 @@ export function FormulationOutput({
   };
 
   return (
+    <>
+      {cookModeActive && result.updatedMethod.length > 0 && (
+        <CookMode
+          recipeName={result.recipeName}
+          steps={result.updatedMethod}
+          onClose={() => setCookModeActive(false)}
+        />
+      )}
+
     <div className="animate-fade-in overflow-hidden rounded-2xl border border-sage-200/80 bg-white shadow-card">
       <div className="relative overflow-hidden border-b border-sage-700/20 bg-gradient-to-br from-sage-800 via-sage-700 to-emerald-800 px-4 py-5 sm:px-6 sm:py-6">
         <div
@@ -213,6 +228,30 @@ export function FormulationOutput({
                     {saveState === "saved" ? "Saved" : "Save recipe"}
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setCookModeActive(true)}
+                  disabled={result.updatedMethod.length === 0}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3.5 py-2 text-sm font-semibold text-white ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m2.828-9.9a9 9 0 0112.728 0"
+                    />
+                  </svg>
+                  Start cook mode
+                </button>
                 <button
                   type="button"
                   onClick={handleCopyOutput}
@@ -547,5 +586,6 @@ export function FormulationOutput({
         )}
       </div>
     </div>
+    </>
   );
 }
