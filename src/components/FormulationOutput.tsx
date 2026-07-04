@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CookMode } from "@/components/CookMode";
+import { ShoppingListPanel } from "@/components/ShoppingListPanel";
 import type { FormulationResult } from "@/lib/formulation";
 
 interface FormulationOutputProps {
@@ -147,10 +148,12 @@ export function FormulationOutput({
   const [showOriginal, setShowOriginal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [cookModeActive, setCookModeActive] = useState(false);
+  const [shoppingListActive, setShoppingListActive] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setCookModeActive(false);
+    setShoppingListActive(false);
   }, [result]);
 
   useEffect(() => {
@@ -177,6 +180,14 @@ export function FormulationOutput({
           recipeName={result.recipeName}
           steps={result.updatedMethod}
           onClose={() => setCookModeActive(false)}
+        />
+      )}
+
+      {shoppingListActive && result.reformulatedIngredients.length > 0 && (
+        <ShoppingListPanel
+          recipeName={result.recipeName}
+          ingredients={result.reformulatedIngredients}
+          onClose={() => setShoppingListActive(false)}
         />
       )}
 
@@ -251,6 +262,30 @@ export function FormulationOutput({
                     />
                   </svg>
                   Start cook mode
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShoppingListActive(true)}
+                  disabled={result.reformulatedIngredients.length === 0}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3.5 py-2 text-sm font-semibold text-white ring-1 ring-white/30 backdrop-blur-sm transition-all hover:bg-white/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  Shop ingredients
                 </button>
                 <button
                   type="button"
